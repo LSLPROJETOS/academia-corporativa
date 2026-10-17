@@ -1,14 +1,1762 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Academia Corporativa</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Academia Corporativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ===== CORES, FONTES E TEMAS (claro e escuro). Mude aqui para trocar o visual. ===== */
+:root{--bg:#f3f5f4;--panel:#fff;--ink:#12263a;--muted:#5b6b7a;--line:#d9e0e3;--brand:#0b6e5f;--link:var(--brand);
+--soft:color-mix(in srgb,var(--brand) 12%,transparent);--top:#12263a;--coin:#f5b700;--danger:#b3261e;--warn:#9a5b00;--ok:#1b7f3b;
+--radius:12px;--font-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--font-head:"Sora","Public Sans",system-ui,sans-serif}
+[data-theme=dark]{--bg:#0f1720;--panel:#17212c;--ink:#e6edf3;--muted:#9aa9b6;--line:#2a3846;--top:#0a1118;
+--link:color-mix(in srgb,var(--brand) 55%,white);--soft:color-mix(in srgb,var(--brand) 28%,transparent);--danger:#ff8a80;--warn:#ffc266;--ok:#6fdc8c}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 var(--font-body)}
+h1,h2,h3{font-family:var(--font-head);line-height:1.2;margin:0 0 .5em}
+h1{font-size:1.7rem}h2{font-size:1.2rem}h3{font-size:1.02rem}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--coin);outline-offset:2px}
+.muted{color:var(--muted)}.small{font-size:.85rem}.hide{display:none!important}
+.container{max-width:1180px;margin:0 auto;padding:24px 16px 72px}
+
+/* ===== BARRA SUPERIOR: marca, menu, pontos, notificações ===== */
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--top);color:#fff;padding:8px 18px;position:sticky;top:0;z-index:5}
+.brand{font:600 1.05rem var(--font-head);color:#fff;text-decoration:none;margin-right:8px}
+#nav{display:flex;gap:2px;flex-wrap:wrap;flex:1}
+#nav a{color:#dfe8ee;text-decoration:none;padding:6px 12px;border-radius:8px}
+#nav a:hover,#nav a.active{background:rgba(255,255,255,.14);color:#fff}
+#user-area{display:flex;align-items:center;gap:6px}
+.menu-btn{display:none}
+.icon-btn,.link-btn,.menu-btn{position:relative;background:none;border:0;color:#dfe8ee;font:inherit;cursor:pointer;padding:6px 10px;border-radius:8px;text-decoration:none}
+.icon-btn:hover,.link-btn:hover,.menu-btn:hover{background:rgba(255,255,255,.14)}
+.dot{position:absolute;top:0;right:0;background:var(--danger);color:#fff;font-size:.65rem;border-radius:99px;padding:0 5px;min-width:16px;text-align:center}
+.user-link{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;padding:2px 8px;border-radius:8px}
+.user-link:hover{background:rgba(255,255,255,.14)}
+.chip.coins{display:inline-flex;align-items:center;gap:8px;padding:3px 12px 3px 4px;border-radius:999px;background:rgba(245,183,0,.16);color:#ffd966;font:600 .9rem var(--font-head);text-decoration:none}
+.chip.coins::before{content:"";width:22px;height:22px;border-radius:50%;background:var(--coin);box-shadow:inset 0 0 0 4px #ffd966,inset 0 0 0 6px #c99700}
+.avatar{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;color:#fff;font:600 .9rem var(--font-head);flex:none}
+.avatar.sm{width:28px;height:28px;font-size:.7rem}.avatar.lg{width:72px;height:72px;font-size:1.5rem}
+
+/* ===== BOTÕES E FORMULÁRIOS ===== */
+.btn{display:inline-block;padding:9px 16px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;font:600 .93rem var(--font-body);cursor:pointer;text-decoration:none;text-align:center}
+.btn:hover{filter:brightness(1.1)}.btn:disabled,.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--link);border-color:var(--line)}
+.btn.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
+.btn.small{padding:4px 10px;font-size:.82rem}
+.btn.gold{background:var(--coin);border-color:var(--coin);color:#3d2d00}
+label{display:block;font-weight:500;margin-bottom:12px;font-size:.93rem}
+label.check{display:flex;gap:8px;align-items:center}
+input,select,textarea{display:block;width:100%;margin-top:4px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--panel);color:var(--ink)}
+input[type=checkbox],input[type=radio]{width:auto;margin:0}
+input[type=color]{padding:2px;height:40px}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>*{flex:1 1 170px}
+.actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+
+/* ===== CAIXAS, CARTÕES, TAGS, BARRAS ===== */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.page-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.grid.sm{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;color:inherit}
+.card.course,.card.click{cursor:pointer}.card.course:hover,.card.click:hover{border-color:var(--brand)}
+.card h3 a{color:var(--ink);text-decoration:none}
+.cover{position:relative;height:96px;border-radius:8px;display:grid;place-items:center;font-size:2.6rem;background:linear-gradient(135deg,hsl(var(--h) 45% 38%),hsl(calc(var(--h) + 40) 50% 28%))}
+.fav{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.35);color:#fff;border:0;border-radius:99px;width:30px;height:30px;font-size:1rem;cursor:pointer}.fav.on{color:var(--coin)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--soft);color:var(--link)}
+.tag.service{background:#fff1cc;color:#7a5a00}.tag.bad{background:#fde3e1;color:#a11d14}.tag.warn{background:#ffe9c7;color:#8a5200}.tag.ok{background:#dcf3e2;color:#17692f}
+.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--brand);transition:width .3s}
+.bar.gold>span{background:var(--coin)}
+.price{font:700 1.15rem var(--font-head)}
+.empty{text-align:center;padding:36px 16px;color:var(--muted)}
+.notice{background:#fff1cc;color:#5c4400;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:.92rem}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+.stat b{display:block;font:700 1.6rem var(--font-head)}.stat span{color:var(--muted);font-size:.85rem}
+.hero{display:flex;gap:20px;flex-wrap:wrap;align-items:center;background:linear-gradient(135deg,var(--brand),color-mix(in srgb,var(--brand) 55%,#000));color:#fff;border-radius:var(--radius);padding:22px;margin-bottom:20px}
+.hero .bar{background:rgba(255,255,255,.25);width:100%}.hero .bar>span{background:var(--coin)}
+.hero h1{margin:0}.hero .grow{flex:1 1 280px}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.badge{border:1px solid var(--line);border-radius:var(--radius);padding:12px;text-align:center;background:var(--panel)}
+.badge .ic{font-size:2rem}.badge.locked{opacity:.45;filter:grayscale(1)}
+.stars button{background:none;border:0;font-size:1.5rem;cursor:pointer;color:var(--line);padding:0 2px}.stars button.on{color:var(--coin)}
+
+/* ===== TABS E TABELAS ===== */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.tabs a,.tabs button{padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font:inherit;cursor:pointer;color:var(--ink);text-decoration:none}
+.tabs .on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-weight:600;color:var(--muted);white-space:nowrap}
+tr.me td{background:var(--soft)}
+
+/* ===== PÁGINA DO CURSO: player, aulas, texto ===== */
+.course-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.player{width:100%;aspect-ratio:16/9;background:#000;border-radius:var(--radius);border:0}
+.prose{line-height:1.7}.prose ul{padding-left:20px}
+.lessons{list-style:none;margin:0;padding:0}
+.lessons .mod{font:600 .78rem var(--font-body);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:10px 4px 4px}
+.lessons li.l{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.lessons li.l:hover{background:var(--bg)}.lessons li.active{border-color:var(--brand);background:var(--soft)}
+.lessons li.locked{opacity:.5;cursor:not-allowed}
+.lessons .check{width:20px;height:20px;flex:none;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:.7rem}
+.lessons li.done .check{background:var(--brand);border-color:var(--brand);color:#fff}
+.lessons .pts{margin-left:auto;font-size:.75rem;color:var(--muted);white-space:nowrap}
+.comment{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.comment .reply{margin-left:44px}
+.q{border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.q label.opt{display:flex;gap:8px;align-items:flex-start;font-weight:400;padding:6px 8px;border-radius:8px;margin:0}
+.q label.opt:hover{background:var(--soft)}.q .right{background:#dcf3e2;color:#17692f}.q .wrong{background:#fde3e1;color:#a11d14}
+
+/* ===== GRÁFICOS SIMPLES (painel) ===== */
+.vbars{display:flex;align-items:flex-end;gap:6px;height:150px}
+.vbars>div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.vbars .b{width:100%;background:var(--brand);border-radius:4px 4px 0 0;min-height:2px}.vbars small{font-size:.68rem;color:var(--muted)}
+.hbar{display:grid;grid-template-columns:minmax(120px,200px) 1fr 44px;gap:10px;align-items:center;margin-bottom:8px;font-size:.88rem}
+
+/* ===== TELA DE LOGIN, JANELAS (modal) E AVISOS ===== */
+.auth{max-width:420px;margin:36px auto}
+dialog{border:1px solid var(--line);border-radius:var(--radius);padding:0;width:min(560px,94vw);background:var(--panel);color:var(--ink)}
+dialog.wide{width:min(820px,96vw)}dialog::backdrop{background:rgba(0,0,0,.5)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-head h2{margin:0}.modal-head .icon-btn{color:var(--ink)}
+#modal-body{padding:18px;max-height:78vh;overflow:auto}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#12263a;color:#fff;padding:10px 18px;border-radius:10px;z-index:20;max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.toast.error{background:var(--danger);color:#fff}
+
+/* ===== CERTIFICADO (também formata a impressão) ===== */
+.cert{border:10px double var(--brand);padding:44px 30px;text-align:center;background:#fff;color:#12263a;max-width:900px;margin:0 auto}
+.cert h1{font-size:2.2rem;color:var(--brand)}.cert .name{font:700 2rem var(--font-head);margin:14px 0;border-bottom:2px solid #12263a;display:inline-block;padding:0 24px}
+@media print{.topbar,.no-print,.toast{display:none!important}body{background:#fff}.container{padding:0;max-width:none}}
+@page{size:A4 landscape;margin:12mm}
+
+/* ===== CELULAR ===== */
+@media(max-width:860px){.course-layout{grid-template-columns:1fr}.menu-btn{display:block;margin-left:auto}
+#nav,#user-area{display:none;width:100%}.topbar.open #nav{display:flex;flex-direction:column}.topbar.open #user-area{display:flex;flex-wrap:wrap}.hide-sm{display:none}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
 </head>
 <body>
-  <p>Abrindo a Academia Corporativa...</p>
-  <script>
-    location.replace(new URL('PLATAFORMA.HTML' + location.search + location.hash, location.href).href);
-  </script>
+<!-- BARRA SUPERIOR: marca, menu e área do usuário (preenchidos pelo JavaScript) -->
+<header class="topbar" id="topbar">
+  <a class="brand" id="brand" href="#/home">Academia Corporativa</a>
+  <button class="menu-btn" data-action="menu" aria-label="Abrir menu">☰</button>
+  <nav id="nav" aria-label="Principal"></nav>
+  <div id="user-area"></div>
+</header>
+<!-- ÁREA PRINCIPAL: cada tela é desenhada aqui -->
+<main id="app" class="container" aria-live="polite"></main>
+<!-- JANELA (modal) usada por formulários de criar/editar -->
+<dialog id="modal">
+  <div class="modal-head"><h2 id="modal-title"></h2><button class="icon-btn" data-action="close" aria-label="Fechar">✕</button></div>
+  <div id="modal-body"></div>
+</dialog>
+<!-- AVISO rápido (sucesso/erro) -->
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+'use strict';
+// ============================================================================
+// MAPA DO CÓDIGO
+//  1. DADOS .......... estado compartilhado no Supabase e arquivos no Storage
+//  2. SEGURANÇA ...... senhas embaralhadas (hash), regras de senha, permissões
+//  3. AUXILIARES ..... funções pequenas usadas em todo o código
+//  4. REGRAS ......... pontos, níveis, conquistas, progresso, certificados, check-in
+//  5. DEMONSTRAÇÃO ... botão que cria cursos, produtos e usuários de exemplo
+//  6. NAVEGAÇÃO ...... menu, tema, roteador e login/cadastro
+//  7. TELAS DO ALUNO . início, cursos, curso, prova, certificado, loja, ranking, perfil
+//  8. TELAS DE ADMIN . painel, usuários, grupos, cursos, loja, trocas, relatórios...
+//  9. EVENTOS ........ o que acontece em cada clique, formulário e digitação
+// ============================================================================
+
+// ============================================================================
+// 1. DADOS
+// ============================================================================
+const SUPABASE_URL = 'https://nkwizwwsuulvdenxzllh.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ZLJxCL3FFxM2AfFETGzqeg_NSRiNsdd';
+const LOCAL_MODE = false;
+const backend = LOCAL_MODE ? null : window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+const LOCAL_STATE_KEY = 'academia-corporativa-local-state';
+const LOCAL_PASSWORDS_KEY = 'academia-corporativa-local-passwords';
+const LOCAL_SESSION_KEY = 'academia-corporativa-local-session';
+
+// Estado inicial. Cada lista funciona como uma tabela de banco de dados.
+const DEFAULTS = () => ({
+  settings: { platformName: 'Academia Corporativa', accent: '#0b6e5f', openSignup: true, requireApproval: false,
+    pointsPerLesson: 10, courseBonus: 50, quizPassBonus: 30, dailyBonus: 5, streak7Bonus: 50, levelStep: 100, minWatchPct: 90 },
+  depts: ['Atendimento', 'Vendas', 'Operações', 'Financeiro', 'RH'], // departamentos/grupos
+  users: [],          // usuários (aluno, instrutor, admin)
+  courses: [],        // cursos e padrões de serviço
+  lessons: [],        // aulas (vídeo, link ou texto) ligadas a um curso
+  quizzes: [],        // prova de cada curso
+  enrollments: [],    // inscrições (com prazo opcional)
+  progress: [],       // aulas concluídas por usuário
+  watch: {},          // posição e trechos assistidos de cada vídeo, por usuário
+  attempts: [],       // tentativas de prova
+  certificates: [],   // certificados emitidos
+  ratings: [], comments: [], notes: {}, favorites: [],
+  products: [], redemptions: [],   // loja e pedidos de troca
+  log: [],            // histórico de pontos
+  notifications: [], announcements: [], audit: [], seq: 1
+});
+
+// O estado de trabalho é local durante a montagem da interface; o Supabase fica para depois.
+let S = DEFAULTS();
+let sessionId = null, sessionAuthId = null, backendReady = false, remoteReady = false;
+let saveTimer = null, saveQueue = Promise.resolve();
+let localPasswords = {};
+
+// Gravações locais persistem no navegador. O modo remoto continua disponível para configuração futura.
+function save() {
+  if (LOCAL_MODE) {
+    try { localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(S)); }
+    catch (error) { toast(`Não foi possível salvar neste navegador: ${error.message}`, true); }
+  } else if (remoteReady) scheduleRemoteSave();
+}
+
+const nid = () => { const r = crypto.getRandomValues(new Uint32Array(2)); return r[0] * 2097152 + (r[1] >>> 11); };
+async function hashLocalPassword(password, salt = crypto.getRandomValues(new Uint8Array(16))) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, key, 256);
+  const hex = (bytes) => [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex(salt)}:${hex(bits)}`;
+}
+async function verifyLocalPassword(password, stored) {
+  const [saltHex, expected] = (stored || '').split(':');
+  if (!/^[0-9a-f]{32}$/i.test(saltHex || '') || !/^[0-9a-f]{64}$/i.test(expected || '')) return false;
+  const salt = new Uint8Array(saltHex.match(/.{2}/g).map((byte) => parseInt(byte, 16)));
+  return (await hashLocalPassword(password, salt)).split(':')[1] === expected;
+}
+
+// ---------- Arquivos grandes (vídeos, materiais) no IndexedDB ----------
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('plataforma-completa', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbOp(mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('files', mode);
+    const req = fn(tx.objectStore('files'));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+const idbPut = (id, blob) => idbOp('readwrite', (s) => s.put(blob, id));
+const idbGet = (id) => idbOp('readonly', (s) => s.get(id));
+const idbDel = (id) => idbOp('readwrite', (s) => s.delete(id));
+
+const sharedCollections = ['courses', 'lessons', 'quizzes', 'products', 'announcements', 'audit'];
+const privateCollections = ['enrollments', 'progress', 'watch', 'attempts', 'certificates', 'ratings', 'comments', 'notes', 'favorites', 'redemptions', 'log', 'notifications'];
+const simpleCollections = ['courses', 'lessons', 'quizzes', 'products', 'announcements', 'enrollments', 'progress', 'attempts', 'certificates', 'ratings', 'comments', 'favorites', 'redemptions', 'log', 'notifications', 'audit'];
+const profileSnapshots = new Map();
+const remoteRecordSnapshots = new Map();
+const remoteRecordKey = (collection, ownerId, recordId) => `${collection}\u0000${ownerId || ''}\u0000${recordId}`;
+function stableJSON(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJSON).join(',')}]`;
+  if (value && typeof value === 'object') return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJSON(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+
+function profileFromRow(row) {
+  return {
+    id: Number(row.internal_id), authId: row.id || row.profile_id, name: row.name || '', email: row.email || '',
+    role: row.role || 'aluno', dept: row.dept || '', jobTitle: row.job_title || '', active: row.active !== false,
+    pending: !!row.pending, points: Number(row.points) || 0, xp: Number(row.xp) || 0,
+    badges: row.badges || [], theme: row.theme || 'auto', createdAt: Date.parse(row.created_at) || Date.now(),
+    lastLogin: row.last_login ? Date.parse(row.last_login) : null, streak: Number(row.streak) || 0,
+    lastCheckin: row.last_checkin || null, fails: 0, lockUntil: 0, mustChange: false
+  };
+}
+
+function profileSnapshot(profile, staff = isStaff()) {
+  const snapshot = {
+    name: profile.name, dept: profile.dept, jobTitle: profile.jobTitle, theme: profile.theme,
+    points: profile.points, xp: profile.xp, badges: profile.badges, streak: profile.streak, lastCheckin: profile.lastCheckin
+  };
+  if (staff) Object.assign(snapshot, { role: profile.role, active: profile.active, pending: profile.pending });
+  return JSON.stringify(snapshot);
+}
+
+function recordId(collection, item, index) {
+  if (item.id != null) return String(item.id);
+  if (item.code) return String(item.code);
+  if (item.courseId != null && ['quizzes', 'enrollments', 'favorites', 'ratings'].includes(collection))
+    return collection === 'quizzes' ? String(item.courseId) : `${item.userId}:${item.courseId}`;
+  if (collection === 'progress') return `${item.userId}:${item.lessonId}`;
+  return `${item.userId || 'shared'}:${item.at || 0}:${index}`;
+}
+
+function ownerAuthId(internalId) {
+  const profile = S.users.find((x) => x.id === Number(internalId));
+  return profile?.authId || (Number(internalId) === sessionId ? sessionAuthId : null);
+}
+
+function rowsForCollection(collection) {
+  if (collection === 'settings') return [{ record_id: 'platform', owner_id: null, payload: S.settings }];
+  if (collection === 'departments') return S.depts.map((name) => ({ record_id: name, owner_id: null, payload: { name } }));
+  if (collection === 'watch' || collection === 'notes') {
+    return Object.entries(S[collection]).map(([key, value]) => {
+      const internalId = Number(key.split(':')[0]);
+      const owner_id = ownerAuthId(internalId);
+      return owner_id ? { record_id: key, owner_id, payload: { userId: internalId, value } } : null;
+    }).filter(Boolean);
+  }
+  return (S[collection] || []).map((item, index) => {
+    if (sharedCollections.includes(collection)) return { record_id: recordId(collection, item, index), owner_id: null, payload: item };
+    const owner_id = ownerAuthId(item.userId);
+    if (!isStaff() && owner_id !== sessionAuthId) return null;
+    return owner_id ? { record_id: recordId(collection, item, index), owner_id, payload: item } : null;
+  }).filter(Boolean);
+}
+
+function hydrateRecords(records) {
+  const mapped = Object.fromEntries(records.map((r) => [r.collection, r.payload]));
+  for (const collection of simpleCollections) S[collection] = records.filter((r) => r.collection === collection).map((r) => r.payload);
+  if (mapped.settings) S.settings = { ...S.settings, ...mapped.settings };
+  const departments = records.filter((r) => r.collection === 'departments').map((r) => r.payload.name);
+  if (departments.length) S.depts = departments;
+  S.watch = Object.fromEntries(records.filter((r) => r.collection === 'watch').map((r) => [r.record_id, r.payload.value]));
+  S.notes = Object.fromEntries(records.filter((r) => r.collection === 'notes').map((r) => [r.record_id, r.payload.value]));
+}
+
+async function loadRemoteState(authUser) {
+  const { data: own, error: ownError } = await backend.from('profiles').select('*').eq('id', authUser.id).single();
+  if (ownError || !own) throw new Error('Não foi possível carregar o perfil da conta. Execute supabase/schema.sql no projeto.');
+  if (!own.active || own.pending) {
+    const message = own.pending ? 'A conta aguarda aprovação.' : 'A conta está desativada. Fale com o administrador.';
+    S = DEFAULTS(); sessionId = null; sessionAuthId = null; remoteReady = false;
+    await backend.auth.signOut();
+    await loadPublicConfig(); toast(message, true); return false;
+  }
+  sessionAuthId = authUser.id;
+  sessionId = Number(own.internal_id);
+  profileSnapshots.clear();
+  S = DEFAULTS();
+  const { data: directory, error: directoryError } = await backend.from('member_directory').select('*');
+  if (directoryError) throw directoryError;
+  S.users = (directory || []).map(profileFromRow);
+  const ownProfile = profileFromRow(own);
+  const ownIndex = S.users.findIndex((x) => x.id === ownProfile.id);
+  if (ownIndex < 0) S.users.push(ownProfile); else S.users[ownIndex] = ownProfile;
+  if (['admin', 'instrutor'].includes(own.role)) {
+    const { data: profiles, error: profilesError } = await backend.from('profiles').select('*');
+    if (profilesError) throw profilesError;
+    S.users = (profiles || []).map(profileFromRow);
+  }
+  S.users.forEach((profile) => profileSnapshots.set(profile.authId, profileSnapshot(profile)));
+  const { data: records, error: recordsError } = await backend.from('app_records').select('id,collection,record_id,owner_id,payload').range(0, 9999);
+  if (recordsError) throw recordsError;
+  remoteRecordSnapshots.clear();
+  (records || []).forEach((row) => remoteRecordSnapshots.set(remoteRecordKey(row.collection, row.owner_id, row.record_id), { ...row, snapshot: stableJSON(row.payload) }));
+  hydrateRecords(records || []);
+  remoteReady = true;
+  return true;
+}
+
+async function loadPublicConfig() {
+  S = DEFAULTS();
+  const { data, error } = await backend.from('app_records').select('collection,payload')
+    .is('owner_id', null).in('collection', ['settings', 'departments']).range(0, 1000);
+  if (error?.code === 'PGRST205') throw new Error('Banco ainda não configurado. Execute supabase/schema.sql no SQL Editor do projeto e recarregue esta página.');
+  if (error) throw error;
+  const settings = (data || []).find((row) => row.collection === 'settings')?.payload;
+  if (settings) S.settings = { ...S.settings, ...settings };
+  const departments = (data || []).filter((row) => row.collection === 'departments').map((row) => row.payload.name);
+  if (departments.length) S.depts = departments;
+}
+
+async function syncCollection(collection) {
+  if (LOCAL_MODE) return;
+  const rows = rowsForCollection(collection).map((row) => ({ ...row, collection }));
+  const keep = new Set(rows.map((row) => remoteRecordKey(collection, row.owner_id, row.record_id)));
+  const changed = rows.filter((row) => remoteRecordSnapshots.get(remoteRecordKey(collection, row.owner_id, row.record_id))?.snapshot !== stableJSON(row.payload));
+  if (changed.length) {
+    const { data, error } = await backend.from('app_records').upsert(changed, { onConflict: 'collection,record_id,owner_scope' })
+      .select('id,collection,record_id,owner_id,payload');
+    if (error) throw error;
+    (data || []).forEach((row) => remoteRecordSnapshots.set(remoteRecordKey(row.collection, row.owner_id, row.record_id), { ...row, snapshot: stableJSON(row.payload) }));
+  }
+  const stale = [...remoteRecordSnapshots.entries()].filter(([key, row]) => row.collection === collection
+    && (isStaff() || row.owner_id === sessionAuthId) && !keep.has(key));
+  const staleIds = stale.map(([, row]) => row.id);
+  if (staleIds.length) {
+    const { error } = await backend.from('app_records').delete().in('id', staleIds);
+    if (error) throw error;
+    stale.forEach(([key]) => remoteRecordSnapshots.delete(key));
+  }
+}
+
+async function syncRemoteState() {
+  if (!remoteReady || !sessionAuthId) return;
+  await syncProfiles();
+  if (isStaff()) {
+    for (const collection of ['settings', 'departments', ...sharedCollections]) await syncCollection(collection);
+  }
+  for (const collection of privateCollections) await syncCollection(collection);
+}
+
+async function syncProfiles() {
+  const staff = isStaff();
+  for (const profile of S.users) {
+    if (!profile.authId) continue;
+    if (!staff && profile.authId !== sessionAuthId) continue;
+    const snapshot = profileSnapshot(profile, staff);
+    const previous = profileSnapshots.get(profile.authId);
+    if (previous === snapshot) continue;
+    const patch = {
+      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme || 'auto',
+      points: Number(profile.points) || 0, xp: Number(profile.xp) || 0, badges: profile.badges || [],
+      streak: Number(profile.streak) || 0, last_checkin: profile.lastCheckin || null
+    };
+    if (staff) Object.assign(patch, { role: profile.role, active: profile.active, pending: profile.pending });
+    const { error } = await backend.from('profiles').update(patch).eq('id', profile.authId);
+    if (error) throw error;
+    profileSnapshots.set(profile.authId, snapshot);
+  }
+}
+
+function scheduleRemoteSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveQueue = saveQueue.then(syncRemoteState).catch((error) => toast(error.message || 'Falha ao salvar no banco remoto.', true));
+  }, 350);
+}
+
+let backendInitPromise = null;
+function initializeBackend() {
+  if (backendInitPromise) return backendInitPromise;
+  backendInitPromise = (async () => {
+    if (LOCAL_MODE) {
+      const defaults = DEFAULTS();
+      const savedState = localStorage.getItem(LOCAL_STATE_KEY);
+      const savedPasswords = localStorage.getItem(LOCAL_PASSWORDS_KEY);
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        S = { ...defaults, ...parsed, settings: { ...defaults.settings, ...parsed.settings } };
+      } else {
+        S = defaults;
+      }
+      localPasswords = savedPasswords ? JSON.parse(savedPasswords) : {};
+      for (const [authId, password] of Object.entries(localPasswords)) {
+        if (typeof password !== 'string') throw new Error('Os dados locais de senha estão inválidos.');
+        if (!/^[0-9a-f]{32}:[0-9a-f]{64}$/i.test(password)) localPasswords[authId] = await hashLocalPassword(password);
+      }
+      let admin = S.users.find((u) => u.email === 'admin@local.test');
+      if (!admin) {
+        admin = { id: nid(), authId: 'local-admin', name: 'Administrador de demonstração', email: 'admin@local.test', role: 'admin',
+          dept: '', jobTitle: '', active: true, pending: false, points: 0, xp: 0, badges: [], theme: 'auto',
+          createdAt: Date.now(), lastLogin: null, streak: 0, lastCheckin: null, fails: 0, lockUntil: 0, mustChange: false };
+        S.users.push(admin);
+      }
+      admin.authId ||= 'local-admin';
+      if (!localPasswords[admin.authId]) localPasswords[admin.authId] = await hashLocalPassword('admin123');
+      localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(localPasswords));
+      const savedSession = Number(localStorage.getItem(LOCAL_SESSION_KEY));
+      const savedUser = S.users.find((u) => u.id === savedSession && u.active && !u.pending);
+      if (savedUser) {
+        sessionId = savedUser.id;
+        sessionAuthId = savedUser.authId;
+      }
+      remoteReady = false;
+      backendReady = true;
+      return;
+    }
+    if (!backend) throw new Error('O cliente Supabase não está disponível.');
+    const { data, error } = await backend.auth.getSession();
+    if (error) throw error;
+    if (data.session?.user) { const loaded = await loadRemoteState(data.session.user); if (!loaded) await loadPublicConfig(); }
+    else { sessionId = null; sessionAuthId = null; remoteReady = false; await loadPublicConfig(); }
+    backendReady = true;
+    backend.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        S = DEFAULTS(); sessionId = null; sessionAuthId = null; remoteReady = false;
+        if (backendReady) { renderChrome(); route(); }
+      }
+    });
+  })().catch((error) => { backendInitPromise = null; throw error; });
+  return backendInitPromise;
+}
+
+// ============================================================================
+// 2. SEGURANÇA
+// ============================================================================
+// Regra de senha: 8+ caracteres, com ao menos uma letra e um número.
+const pwOk = (p) => typeof p === 'string' && p.length >= 8 && /[a-zA-Z]/.test(p) && /\d/.test(p);
+const PW_MSG = 'A senha precisa ter 8+ caracteres, com letras e números.';
+
+// Perfis: admin faz tudo; instrutor gerencia cursos/relatórios; aluno estuda.
+const ROLE = { admin: 'Administrador', instrutor: 'Instrutor', aluno: 'Aluno' };
+// Usuário logado (precisa estar ativo e aprovado).
+const me = () => S.users.find((u) => u.id === sessionId && u.active && !u.pending) || null;
+const isAdmin = () => me()?.role === 'admin';
+const isStaff = () => ['admin', 'instrutor'].includes(me()?.role);
+// Barra quem não tem permissão. Usada no início de toda ação administrativa.
+function need(level) { if ((level === 'admin' && !isAdmin()) || (level === 'staff' && !isStaff())) fail('Você não tem permissão para isso.'); }
+
+// ============================================================================
+// 3. AUXILIARES
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+function fail(msg) { throw new Error(msg); }                         // interrompe com mensagem de erro
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); // evita injeção de código
+const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
+const fmtDate = (t) => new Date(t).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+const fmtISO = (s) => (s ? s.split('-').reverse().join('/') : '');   // '2026-10-31' -> '31/10/2026'
+const fmtDur = (m) => (m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${m || 0} min`);
+const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const todayISO = () => isoOf(new Date());
+const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
+const hue = (id) => (id * 47) % 360;                                 // cor própria de cada usuário/curso
+const avatar = (u, size = '') => `<span class="avatar ${size}" style="background:hsl(${hue(u.id)} 45% 38%)">${esc(initials(u.name))}</span>`;
+const genCode = (n = 8) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b % 32]).join('');
+const tag = (t, cls = '') => `<span class="tag ${cls}">${t}</span>`;
+const panel = (h, cls = '') => `<section class="panel ${cls}">${h}</section>`;
+const CAT = { curso: 'Curso', padrao_servico: 'Padrão de serviço' };
+const LEVELS = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
+const LEVEL_TITLES = ['Iniciante', 'Aprendiz', 'Praticante', 'Profissional', 'Especialista', 'Mestre', 'Lenda'];
+
+// Busca rápida de registros.
+const user = (id) => S.users.find((u) => u.id === Number(id));
+const course = (id) => S.courses.find((c) => c.id === Number(id));
+const lesson = (id) => S.lessons.find((l) => l.id === Number(id));
+const product = (id) => S.products.find((p) => p.id === Number(id));
+const quizOf = (cid) => S.quizzes.find((q) => q.courseId === cid);
+const lessonsOf = (cid) => S.lessons.filter((l) => l.courseId === cid).sort((a, b) => a.position - b.position);
+const enrollment = (uid, cid) => S.enrollments.find((e) => e.userId === uid && e.courseId === cid);
+const isEnrolled = (uid, cid) => !!enrollment(uid, cid);
+const isDone = (uid, lid) => S.progress.some((p) => p.userId === uid && p.lessonId === lid);
+const certOf = (uid, cid) => S.certificates.find((c) => c.userId === uid && c.courseId === cid);
+const isFav = (uid, cid) => S.favorites.some((f) => f.userId === uid && f.courseId === cid);
+const courseHours = (cid) => lessonsOf(cid).reduce((s, l) => s + (Number(l.duration) || 0), 0);
+const avgRating = (cid) => { const r = S.ratings.filter((x) => x.courseId === cid); return { avg: r.length ? r.reduce((s, x) => s + x.stars, 0) / r.length : 0, n: r.length }; };
+const dueOf = (e, c) => (e && e.dueDate) || (c && c.deadline) || '';
+
+// Etiqueta de prazo: vermelha se atrasado, laranja se faltam até 3 dias.
+function dueTag(iso, complete) {
+  if (!iso || complete) return '';
+  const days = Math.ceil((new Date(iso + 'T23:59:59') - Date.now()) / 864e5);
+  if (days < 0) return tag(`Atrasado desde ${fmtISO(iso)}`, 'bad');
+  if (days <= 3) return tag(`Vence ${fmtISO(iso)}`, 'warn');
+  return tag(`Prazo ${fmtISO(iso)}`);
+}
+
+// Aviso rápido embaixo da tela.
+let toastTimer;
+function toast(msg, isError = false) {
+  const t = $('toast'); t.textContent = msg; t.className = 'toast' + (isError ? ' error' : ''); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 4200);
+}
+// Janela (modal) para formulários de criar/editar.
+function openModal(title, html, wide = false) {
+  const d = $('modal'); $('modal-title').textContent = title; $('modal-body').innerHTML = html;
+  d.classList.toggle('wide', wide); if (!d.open) d.showModal();
+}
+function closeModal() { const d = $('modal'); if (d.open) d.close(); }
+
+// Montadores de campos de formulário (deixam o código dos formulários mais curto).
+const fld = (label, name, val = '', attrs = '') => `<label>${label}<input name="${name}" value="${esc(val)}" ${attrs}></label>`;
+const area = (label, name, val = '', attrs = '') => `<label>${label}<textarea name="${name}" ${attrs}>${esc(val)}</textarea></label>`;
+const sel = (label, name, opts, val) => `<label>${label}<select name="${name}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(val) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+const chk = (label, name, on) => `<label class="check"><input type="checkbox" name="${name}" ${on ? 'checked' : ''}> ${label}</label>`;
+const formJSON = (f) => Object.fromEntries(new FormData(f).entries());
+
+// Texto simples das aulas: parágrafos, "# título", listas com "- " e **negrito**.
+function renderText(t) {
+  return esc(t).split(/\n{2,}/).map((p) => {
+    if (/^# /.test(p)) return `<h3>${p.slice(2)}</h3>`;
+    if (/^(- .*(\n|$))+$/.test(p)) return `<ul>${p.split('\n').map((l) => `<li>${l.slice(2)}</li>`).join('')}</ul>`;
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+  }).join('').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+
+// Download de arquivos gerados pelo navegador (CSV e backup).
+function downloadBlob(name, blob) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+// CSV com ';' e acentos corretos para abrir direto no Excel brasileiro.
+function downloadCSV(name, rows) {
+  const csv = '\ufeff' + rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  downloadBlob(name, new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+}
+// Reduz imagem de produto para caber no armazenamento (240px, JPEG).
+function imageToDataURL(file, max = 240) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => rej(new Error('Imagem inválida.')); img.src = URL.createObjectURL(file);
+  });
+}
+// Descobre a duração (em minutos) de um vídeo enviado.
+function probeDuration(file) {
+  return new Promise((res) => {
+    const v = document.createElement('video'), url = URL.createObjectURL(file); let done = false;
+    const end = (m) => { if (done) return; done = true; URL.revokeObjectURL(url); res(m); };
+    v.preload = 'metadata'; v.onloadedmetadata = () => end(Math.max(1, Math.round(v.duration / 60))); v.onerror = () => end(0);
+    setTimeout(() => end(0), 4000); v.src = url;
+  });
+}
+
+// Registro de atividades (auditoria) e notificações para os usuários.
+function audit(action) { S.audit.push({ at: Date.now(), userId: sessionId, action }); if (S.audit.length > 500) S.audit.shift(); }
+function notify(userId, text, link = '') { S.notifications.push({ id: nid(), userId, text, link, at: Date.now(), read: false }); }
+
+// Trechos de vídeo já assistidos: junta intervalos [início, fim] em segundos.
+function addRange(r, a, b) {
+  if (b <= a) return; r.push([a, b]); r.sort((x, y) => x[0] - y[0]);
+  const m = [r[0].slice()];
+  for (const x of r.slice(1)) { const l = m[m.length - 1]; if (x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else m.push(x.slice()); }
+  r.length = 0; m.forEach((x) => r.push(x));
+}
+const covered = (r) => r.reduce((s, x) => s + x[1] - x[0], 0);
+
+// Apaga um curso, aulas, arquivos, prova e tudo ligado a ele.
+async function purgeCourse(cid) {
+  const c = course(cid); const ids = lessonsOf(cid).map((l) => l.id);
+  for (const l of lessonsOf(cid)) if (l.fileId) await idbDel(l.fileId);
+  const videoPaths = lessonsOf(cid).map((l) => l.filePath).filter(Boolean);
+  if (!LOCAL_MODE && videoPaths.length) { const { error } = await backend.storage.from('course-videos').remove(videoPaths); if (error) throw error; }
+  for (const m of c.materials || []) await idbDel(m.fileId);
+  const materialPaths = (c.materials || []).map((m) => m.filePath).filter(Boolean);
+  if (!LOCAL_MODE && materialPaths.length) { const { error } = await backend.storage.from('course-materials').remove(materialPaths); if (error) throw error; }
+  S.lessons = S.lessons.filter((l) => l.courseId !== cid); S.quizzes = S.quizzes.filter((q) => q.courseId !== cid);
+  ['enrollments', 'attempts', 'certificates', 'ratings', 'comments', 'favorites'].forEach((k) => (S[k] = S[k].filter((r) => r.courseId !== cid)));
+  S.progress = S.progress.filter((p) => !ids.includes(p.lessonId));
+  Object.keys(S.watch).forEach((k) => ids.includes(Number(k.split(':')[1])) && delete S.watch[k]);
+  S.courses = S.courses.filter((x) => x.id !== cid);
+}
+
+// ============================================================================
+// 4. REGRAS DE PONTOS, NÍVEIS E CONQUISTAS
+// ============================================================================
+// Pontos têm dois contadores: "points" é o saldo (gasto na loja) e "xp" é o total já ganho (define nível e ranking).
+function levelInfo(xp) {
+  const step = S.settings.levelStep || 100, level = Math.floor(Math.sqrt(xp / step)) + 1;
+  const cur = (level - 1) ** 2 * step, next = level ** 2 * step;
+  return { level, cur, next, pct: Math.round(((xp - cur) / (next - cur)) * 100), title: LEVEL_TITLES[Math.min(level - 1, LEVEL_TITLES.length - 1)] };
+}
+// Soma ou subtrai pontos, registra o motivo e avisa quando sobe de nível.
+function award(uid, amt, reason) {
+  const u = user(uid); if (!u || !amt) return;
+  const before = levelInfo(u.xp).level; u.points += amt; if (amt > 0) u.xp += amt;
+  S.log.push({ userId: uid, delta: amt, reason, at: Date.now() });
+  if (amt > 0 && levelInfo(u.xp).level > before) notify(uid, `⭐ Você subiu para o nível ${levelInfo(u.xp).level}!`, '#/profile');
+}
+// Lista de conquistas. "test" decide quando o usuário ganha; "bonus" são pontos extras.
+const BADGES = [
+  { id: 'first', icon: '🚀', name: 'Primeiro passo', desc: 'Conclua sua primeira aula', bonus: 5, test: (u, s) => s.lessons >= 1 },
+  { id: 'lessons10', icon: '📚', name: 'Estudioso', desc: 'Conclua 10 aulas', bonus: 20, test: (u, s) => s.lessons >= 10 },
+  { id: 'lessons50', icon: '🧠', name: 'Maratonista', desc: 'Conclua 50 aulas', bonus: 80, test: (u, s) => s.lessons >= 50 },
+  { id: 'course1', icon: '🎓', name: 'Formado', desc: 'Conclua seu primeiro curso', bonus: 30, test: (u, s) => s.courses >= 1 },
+  { id: 'course5', icon: '🏆', name: 'Colecionador', desc: 'Conclua 5 cursos', bonus: 100, test: (u, s) => s.courses >= 5 },
+  { id: 'perfect', icon: '💯', name: 'Nota máxima', desc: 'Tire 100% em uma prova', bonus: 25, test: (u, s) => s.perfect >= 1 },
+  { id: 'streak7', icon: '🔥', name: 'Constância', desc: '7 dias seguidos de check-in', bonus: 40, test: (u, s) => s.streak >= 7 },
+  { id: 'xp500', icon: '💰', name: 'Poupador', desc: 'Acumule 500 pontos', bonus: 30, test: (u) => u.xp >= 500 },
+  { id: 'shop', icon: '🎁', name: 'Primeira troca', desc: 'Troque pontos por um produto', bonus: 0, test: (u, s) => s.redeems >= 1 },
+  { id: 'duty', icon: '✅', name: 'Cumpridor', desc: 'Conclua um curso obrigatório', bonus: 30, test: (u, s) => s.mandatory >= 1 }
+];
+function userStats(u) {
+  return { lessons: S.progress.filter((p) => p.userId === u.id).length, courses: S.certificates.filter((c) => c.userId === u.id).length,
+    perfect: S.attempts.filter((a) => a.userId === u.id && a.score === 100).length, redeems: S.redemptions.filter((r) => r.userId === u.id).length,
+    streak: u.streak || 0, mandatory: S.certificates.filter((c) => c.userId === u.id && course(c.courseId)?.mandatory).length };
+}
+// Confere se o usuário ganhou novas conquistas.
+function checkBadges(uid) {
+  const u = user(uid); if (!u) return; const st = userStats(u);
+  BADGES.forEach((b) => {
+    if (!u.badges.includes(b.id) && b.test(u, st)) {
+      u.badges.push(b.id); notify(uid, `${b.icon} Nova conquista: ${b.name}!`, '#/profile'); award(uid, b.bonus || 0, `Conquista: ${b.name}`);
+    }
+  });
+}
+// Progresso do usuário em um curso. "complete" exige todas as aulas e a prova (se houver).
+function courseProg(uid, cid) {
+  const ls = lessonsOf(cid), done = ls.filter((l) => isDone(uid, l.id)).length, q = quizOf(cid);
+  const quizOk = !q || S.attempts.some((a) => a.userId === uid && a.courseId === cid && a.passed);
+  return { total: ls.length, done, pct: ls.length ? Math.round((done / ls.length) * 100) : 0, quizOk, complete: ls.length > 0 && done === ls.length && quizOk };
+}
+// Emite o certificado e dá o bônus quando o curso é concluído (só uma vez).
+function checkCourseCompletion(uid, cid) {
+  if (!courseProg(uid, cid).complete || certOf(uid, cid)) return null;
+  const c = course(cid), cert = { code: genCode(10), userId: uid, courseId: cid, at: Date.now() };
+  S.certificates.push(cert);
+  if (c.bonus > 0) award(uid, c.bonus, `Curso concluído: ${c.title}`);
+  notify(uid, `🎓 Você concluiu "${c.title}" e ganhou um certificado!`, `#/certificate/${cert.code}`);
+  checkBadges(uid); return cert;
+}
+// Conclui uma aula: pontos só na primeira vez. Depois confere o curso e as conquistas.
+function completeLesson(uid, lid) {
+  if (isDone(uid, lid)) return null;
+  const l = lesson(lid), pts = Number(l.points) || 0;
+  S.progress.push({ userId: uid, lessonId: lid, at: Date.now() });
+  if (pts > 0) award(uid, pts, `Aula concluída: ${l.title}`);
+  const cert = checkCourseCompletion(uid, l.courseId); checkBadges(uid); save();
+  return { earned: pts, cert };
+}
+// Check-in diário: dá pontos e conta dias seguidos. A cada 7 dias seguidos, bônus extra.
+function checkin(uid) {
+  const u = user(uid), t = todayISO(); if (u.lastCheckin === t) return null;
+  const yesterday = isoOf(new Date(Date.now() - 864e5));
+  u.streak = u.lastCheckin === yesterday ? (u.streak || 0) + 1 : 1; u.lastCheckin = t;
+  let total = S.settings.dailyBonus;
+  award(uid, S.settings.dailyBonus, `Check-in diário (${u.streak} dia${u.streak > 1 ? 's' : ''} seguidos)`);
+  if (u.streak % 7 === 0) { award(uid, S.settings.streak7Bonus, 'Bônus de 7 dias seguidos'); total += S.settings.streak7Bonus; }
+  checkBadges(uid); save(); return total;
+}
+
+// Leitura/escrita da prova no formato de texto:  P: pergunta / a) opção / b) *opção correta / E: explicação
+function parseQuiz(text) {
+  const qs = []; let cur = null;
+  text.split('\n').map((l) => l.trim()).filter(Boolean).forEach((l) => {
+    if (/^P:/i.test(l)) { cur = { q: l.slice(2).trim(), options: [], correct: -1, explain: '' }; qs.push(cur); }
+    else if (/^[a-eA-E]\)/.test(l) && cur) { let t = l.slice(2).trim(), ok = false; if (t.startsWith('*')) { ok = true; t = t.slice(1).trim(); } cur.options.push(t); if (ok) cur.correct = cur.options.length - 1; }
+    else if (/^E:/i.test(l) && cur) cur.explain = l.slice(2).trim();
+    else fail(`Linha não reconhecida: "${l}"`);
+  });
+  qs.forEach((q, i) => {
+    if (!q.q) fail(`Pergunta ${i + 1} está vazia.`);
+    if (q.options.length < 2) fail(`Pergunta ${i + 1}: use pelo menos 2 alternativas.`);
+    if (q.correct < 0) fail(`Pergunta ${i + 1}: marque a correta com * (ex.: b) *texto).`);
+  });
+  if (!qs.length) fail('Adicione ao menos uma pergunta.');
+  return qs;
+}
+const quizToText = (qs) => qs.map((q) => `P: ${q.q}\n${q.options.map((o, i) => `${'abcde'[i]}) ${i === q.correct ? '*' : ''}${o}`).join('\n')}${q.explain ? `\nE: ${q.explain}` : ''}`).join('\n\n');
+
+// Tabelas de ações (cliques) e de formulários. São preenchidas nas seções 7, 8 e 9.
+const FORMS = {}, ACTIONS = {}, VIEWS = {};
+// Filtros digitáveis de cada tela (C=cursos, U=usuários, S=loja, R=ranking, X=relatórios) e como atualizar a lista.
+const FILTERS = { C: { q: '', cat: '', area: '', level: '', status: '', sort: 'recent' }, U: { q: '', role: '', dept: '', status: '' }, S: { q: '', cat: '', afford: false }, R: { scope: 'geral', dept: '' }, X: { course: '' } };
+const REFRESH = {};
+
+// ============================================================================
+// 5. DADOS DE DEMONSTRAÇÃO (botão no Início e em Administração > Dados)
+// ============================================================================
+async function seedDemo() {
+  const demoUsers = [me()];
+  const inDays = (n) => isoOf(new Date(Date.now() + n * 864e5));
+  // Cria curso + aulas de texto + prova de exemplo.
+  const mk = (c, lessons, quiz) => {
+    const id = nid(); S.courses.push({ id, status: 'publicado', area: '', level: 'iniciante', instructor: 'Equipe de Treinamento', objectives: '', mandatory: false, sequential: false, deadline: '', bonus: S.settings.courseBonus, prereq: '', emoji: '📘', createdAt: Date.now(), materials: [], ...c });
+    lessons.forEach((l, i) => S.lessons.push({ id: nid(), courseId: id, position: i + 1, type: 'texto', points: S.settings.pointsPerLesson, duration: 5, url: '', fileId: null, ...l }));
+    if (quiz) S.quizzes.push({ courseId: id, passScore: 70, points: S.settings.quizPassBonus, maxAttempts: 3, questions: quiz });
+    return id;
+  };
+  const c1 = mk({ title: 'Atendimento ao Cliente: Fundamentos', category: 'padrao_servico', area: 'Atendimento', emoji: '🤝', mandatory: true, sequential: true, deadline: inDays(10),
+    description: 'Padrão oficial de atendimento: postura, escuta ativa e resolução de problemas.', objectives: 'Aplicar o padrão de atendimento em todos os canais.' }, [
+    { title: 'Postura e primeira impressão', module: 'Módulo 1: Base', content: '# Primeira impressão\n\nOs primeiros **10 segundos** definem a experiência.\n\n- Cumprimente com sorriso e contato visual\n- Use o nome do cliente\n- Mantenha a postura aberta' },
+    { title: 'Escuta ativa', module: 'Módulo 1: Base', content: '# Escuta ativa\n\nOuça para entender, não para responder.\n\n- Não interrompa\n- Repita o pedido com suas palavras\n- Faça perguntas abertas' },
+    { title: 'Resolvendo reclamações', module: 'Módulo 2: Prática', content: '# Método ORA\n\n**O**uvir, **R**econhecer, **A**gir.\n\nNunca discuta com o cliente. Ofereça uma solução e um prazo.' },
+    { title: 'Encerramento e pós-atendimento', module: 'Módulo 2: Prática', content: '# Encerrando bem\n\nConfirme se tudo foi resolvido e agradeça.\n\nRegistre o atendimento no sistema.' }
+  ], [
+    { q: 'Quanto tempo define a primeira impressão?', options: ['10 segundos', '10 minutos', '1 hora'], correct: 0, explain: 'Os primeiros segundos pesam mais.' },
+    { q: 'O que significa o método ORA?', options: ['Ouvir, Reconhecer, Agir', 'Opinar, Responder, Arquivar', 'Observar, Registrar, Avisar'], correct: 0, explain: '' },
+    { q: 'Diante de uma reclamação, o correto é:', options: ['Discutir os fatos', 'Oferecer solução e prazo', 'Encaminhar sem explicar'], correct: 1, explain: '' }]);
+  const c2 = mk({ title: 'Padrão de Serviço: Abertura e Fechamento da Loja', category: 'padrao_servico', area: 'Operações', emoji: '🏪', mandatory: true, deadline: inDays(-2),
+    description: 'Checklists oficiais de abertura e fechamento, segurança e organização.' }, [
+    { title: 'Checklist de abertura', module: 'Rotinas', content: '# Abertura\n\n- Desligar o alarme\n- Conferir o caixa\n- Ligar sistemas e iluminação' },
+    { title: 'Checklist de fechamento', module: 'Rotinas', content: '# Fechamento\n\n- Fechar o caixa\n- Guardar valores\n- Ligar o alarme e trancar' },
+    { title: 'Segurança e ocorrências', module: 'Segurança', content: 'Qualquer ocorrência deve ser registrada **no mesmo dia** e comunicada ao gestor.' }
+  ], [
+    { q: 'O alarme deve ser ligado:', options: ['Na abertura', 'No fechamento', 'Nunca'], correct: 1, explain: '' },
+    { q: 'Ocorrências devem ser registradas:', options: ['No mesmo dia', 'No fim do mês'], correct: 0, explain: '' }]);
+  const c3 = mk({ title: 'Técnicas de Vendas Consultivas', category: 'curso', area: 'Vendas', level: 'intermediario', emoji: '📈',
+    description: 'Do diagnóstico ao fechamento: venda entendendo a necessidade do cliente.', objectives: 'Conduzir uma venda consultiva completa.' }, [
+    { title: 'Diagnóstico de necessidades', module: 'Etapas', content: 'Antes de oferecer, **pergunte**. Descubra o problema real do cliente.' },
+    { title: 'Apresentando a solução', module: 'Etapas', content: 'Conecte cada característica a um benefício para o cliente.' },
+    { title: 'Contornando objeções', module: 'Etapas', content: '# Objeções\n\n- Escute até o fim\n- Valide a preocupação\n- Responda com fatos' },
+    { title: 'Fechamento', module: 'Etapas', content: 'Peça a decisão com naturalidade e confirme os próximos passos.' }
+  ], [
+    { q: 'O primeiro passo da venda consultiva é:', options: ['Oferecer desconto', 'Diagnosticar a necessidade', 'Fechar o pedido'], correct: 1, explain: '' },
+    { q: 'Ao ouvir uma objeção, você deve:', options: ['Interromper', 'Escutar e validar', 'Ignorar'], correct: 1, explain: '' }]);
+  // Inscreve os alunos de exemplo e cria progresso variado (alimenta gráficos e ranking).
+  demoUsers.forEach((u) => [c1, c2, c3].forEach((cid) => {
+    if (!isEnrolled(u.id, cid)) S.enrollments.push({ userId: u.id, courseId: cid, at: Date.now(), dueDate: '' });
+    lessonsOf(cid).forEach((l) => { if (Math.random() < 0.5 && !isDone(u.id, l.id)) S.progress.push({ userId: u.id, lessonId: l.id, at: Date.now() - Math.floor(Math.random() * 13) * 864e5 }); });
+  }));
+  const prods = [['☕', 'Vale-café', 'Vale', 50, 30, 'Um café na cafeteria parceira.'], ['👕', 'Camiseta da empresa', 'Brindes', 300, 15, 'Camiseta oficial.'],
+    ['🎧', 'Fone de ouvido', 'Eletrônicos', 800, 5, 'Fone bluetooth.'], ['🌴', 'Folga de um dia', 'Benefícios', 1500, 3, 'Um dia de folga com aprovação do gestor.']];
+  prods.forEach(([emoji, name, category, cost, stock, description]) => { if (!S.products.some((p) => p.name === name)) S.products.push({ id: nid(), name, category, cost, stock, unlimited: false, limit: 0, description, emoji, image: '', active: true }); });
+  S.announcements.push({ id: nid(), title: 'Bem-vindo(a) à plataforma!', text: 'Faça seu check-in diário, conclua os cursos obrigatórios e troque seus pontos por prêmios na loja.', at: Date.now(), authorId: sessionId, pinned: true });
+  audit('Dados de demonstração carregados'); save();
+}
+
+// ============================================================================
+// 6. NAVEGAÇÃO, TEMA E LOGIN
+// ============================================================================
+const app = $('app'), nav = $('nav');
+let mediaUrl = null;
+function stopMedia() { if (mediaUrl?.startsWith('blob:')) URL.revokeObjectURL(mediaUrl); mediaUrl = null; }
+
+// Aplica tema claro/escuro, cor de destaque e nome da plataforma.
+function applyTheme() {
+  const t = me()?.theme || 'auto';
+  document.documentElement.dataset.theme = t === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
+  document.documentElement.style.setProperty('--brand', S.settings.accent);
+  $('brand').textContent = S.settings.platformName; document.title = S.settings.platformName;
+}
+// Desenha o menu e a área do usuário (pontos, sino, perfil, sair).
+function renderChrome() {
+  const u = me(); applyTheme();
+  if (!u) { nav.innerHTML = ''; $('user-area').innerHTML = ''; return; }
+  const cur = location.hash.split('/')[1] || 'home';
+  const L = (h, l, k) => `<a href="#/${h}" class="${cur === k ? 'active' : ''}">${l}</a>`;
+  nav.innerHTML = L('home', 'Início', 'home') + L('courses', 'Cursos', 'courses') + L('mine', 'Meus cursos', 'mine') + L('videos', 'Vídeos', 'videos') + L('store', 'Loja', 'store') + L('ranking', 'Ranking', 'ranking')
+    + (isStaff() ? L('admin/dashboard', isAdmin() ? 'Administração' : 'Gestão', 'admin') : '');
+  const unread = S.notifications.filter((n) => n.userId === u.id && !n.read).length;
+  $('user-area').innerHTML = `<a class="chip coins" href="#/store" title="Seu saldo">${u.points} pts</a>
+    <a class="icon-btn" href="#/notifications" aria-label="Notificações">🔔${unread ? `<span class="dot">${unread}</span>` : ''}</a>
+    <a class="user-link" href="#/profile">${avatar(u, 'sm')}<span class="hide-sm">${esc(u.name.split(' ')[0])}</span></a>
+    <a class="icon-btn" href="#/account" aria-label="Minha conta">⚙</a><button class="link-btn" data-action="logout">Sair</button>`;
+}
+// Navega para um endereço (se já está nele, apenas redesenha).
+const go = (h) => (location.hash === h ? route() : (location.hash = h));
+const rerender = () => route(false); // redesenha a tela atual sem voltar ao topo
+
+// ROTEADOR: lê o endereço (#/courses, #/store...) e decide qual tela mostrar.
+async function route(scroll = true) {
+  stopMedia();
+  const [, page, a, b] = (location.hash || '#/home').split('/');
+  try {
+    if (!backendReady) await initializeBackend();
+    if (new URLSearchParams(location.search).get('recovery') === '1') { renderChrome(); VIEWS.resetPassword(); return; }
+    if (page === 'verify') { renderChrome(); await viewVerify(a); return; } // verificação pública de certificado
+    const u = me(); renderChrome();
+    if (!u) { page === 'register' ? viewRegister() : viewLogin(); return; }
+    if (u.mustChange && page !== 'account') { go('#/account'); return; } // troca de senha obrigatória
+    if (scroll) closeModal();
+    await (VIEWS[page] || VIEWS.home)(a, b);
+  } catch (e) {
+    app.innerHTML = `<div class="panel empty"><h2>Não foi possível abrir</h2><p>${esc(e.message)}</p><a class="btn" href="#/home">Voltar ao início</a></div>`;
+  }
+  renderChrome(); if (scroll) window.scrollTo(0, 0);
+}
+VIEWS.login = VIEWS.register = () => go('#/home');
+VIEWS.resetPassword = () => {
+  app.innerHTML = `<section class="auth panel"><h1>Redefinir senha</h1><form data-form="resetpassword">
+    <label>Nova senha (8+ caracteres, letras e números)<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+    <label>Repita a nova senha<input name="password2" type="password" autocomplete="new-password" required minlength="8"></label>
+    <button class="btn" type="submit">Salvar senha</button></form></section>`;
+};
+
+// ---------- Login e cadastro ----------
+function viewLogin() {
+  app.innerHTML = `<section class="auth panel"><h1>Entrar</h1>
+    ${LOCAL_MODE ? '<div class="notice">Modo de teste local — e-mail: <strong>admin@local.test</strong> · senha: <strong>admin123</strong>. Seus dados ficam salvos somente neste navegador.</div>' : ''}
+    <form data-form="login">
+      <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
+      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn" type="submit">Entrar</button> <button class="btn ghost" type="button" data-action="forgot">Esqueci a senha</button>
+    </form>
+    ${S.settings.openSignup ? '<p class="muted">Ainda não tem conta? <a href="#/register">Cadastre-se</a></p>' : '<p class="muted">Cadastros são feitos pelo administrador.</p>'}</section>`;
+}
+function viewRegister() {
+  if (!S.settings.openSignup) return viewLogin();
+  app.innerHTML = `<section class="auth panel"><h1>Criar conta</h1>
+    <div class="notice">A conta será criada como aluno. Um administrador poderá ajustar seu perfil depois.</div>
+    <form data-form="register">
+      <label>Nome completo<input name="name" autocomplete="name" required minlength="2"></label>
+      <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
+      ${sel('Departamento', 'dept', [['', 'Selecione...'], ...S.depts.map((d) => [d, d])], '')}
+      <label>Senha (8+ caracteres, letras e números)<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+      <label>Repita a senha<input name="password2" type="password" autocomplete="new-password" required minlength="8"></label>
+      <button class="btn" type="submit">Criar conta</button>
+    </form><p class="muted">Já tem conta? <a href="#/login">Entrar</a></p></section>`;
+}
+FORMS.login = async (d) => {
+  if (LOCAL_MODE) {
+    const email = d.email.trim().toLowerCase();
+    const u = S.users.find((x) => x.email.toLowerCase() === email);
+    if (!u || !(await verifyLocalPassword(d.password, localPasswords[u.authId]))) fail('E-mail ou senha incorretos.');
+    if (!u.active || u.pending) fail(u.pending ? 'A conta aguarda aprovação.' : 'A conta está desativada. Fale com o administrador.');
+    sessionId = u.id; sessionAuthId = u.authId; u.lastLogin = Date.now();
+    localStorage.setItem(LOCAL_SESSION_KEY, String(u.id));
+    audit('Login'); save(); go('#/home'); return;
+  }
+  const { data, error } = await backend.auth.signInWithPassword({ email: d.email.trim().toLowerCase(), password: d.password });
+  if (error) fail('E-mail ou senha incorretos.');
+  if (!(await loadRemoteState(data.user))) return;
+  audit('Login'); save(); go('#/home');
+};
+FORMS.register = async (d) => {
+  if (!S.settings.openSignup) fail('Cadastro fechado.');
+  if (d.name.trim().length < 2) fail('Informe o nome (mínimo 2 letras).');
+  if (d.password !== d.password2) fail('As senhas não coincidem.');
+  if (!pwOk(d.password)) fail(PW_MSG);
+  if (LOCAL_MODE) {
+    const email = d.email.trim().toLowerCase();
+    if (S.users.some((u) => u.email.toLowerCase() === email)) fail('Já existe uma conta com este e-mail.');
+    const u = { id: nid(), authId: `local-${nid()}`, name: d.name.trim(), email, role: 'aluno', dept: d.dept || '',
+      jobTitle: '', active: true, pending: !!S.settings.requireApproval, points: 0, xp: 0, badges: [], theme: 'auto',
+      createdAt: Date.now(), lastLogin: null, streak: 0, lastCheckin: null, fails: 0, lockUntil: 0, mustChange: false };
+    S.users.push(u); localPasswords[u.authId] = await hashLocalPassword(d.password);
+    localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(localPasswords)); save();
+    if (u.pending) { toast('Cadastro criado. A conta aguarda aprovação do administrador.'); go('#/login'); return; }
+    sessionId = u.id; sessionAuthId = u.authId; u.lastLogin = Date.now(); localStorage.setItem(LOCAL_SESSION_KEY, String(u.id));
+    audit('Cadastro'); save(); go('#/home'); return;
+  }
+  const { data, error } = await backend.auth.signUp({ email: d.email.trim().toLowerCase(), password: d.password, options: { data: { name: d.name.trim(), dept: d.dept || '' } } });
+  if (error) fail(error.message);
+  if (!data.session) { toast('Cadastro criado. Confirme o e-mail para entrar.'); go('#/login'); return; }
+  if (!(await loadRemoteState(data.user))) { go('#/login'); return; }
+  audit('Cadastro'); save(); go('#/home');
+};
+ACTIONS.forgot = async () => {
+  if (LOCAL_MODE) { toast('A redefinição por e-mail será configurada quando o banco estiver pronto. Para testar, use a conta de demonstração.'); return; }
+  const email = prompt('Informe o e-mail da conta para receber o link de redefinição:');
+  if (!emailOk(email)) return;
+  const { error } = await backend.auth.resetPasswordForEmail(email.trim().toLowerCase(), { redirectTo: location.origin + location.pathname + '?recovery=1' });
+  if (error) fail(error.message);
+  toast('Se o e-mail estiver cadastrado, enviaremos um link para redefinir a senha.');
+};
+FORMS.resetpassword = async (d) => {
+  if (d.password !== d.password2) fail('As senhas não coincidem.');
+  if (!pwOk(d.password)) fail(PW_MSG);
+  if (LOCAL_MODE) fail('A redefinição por link será configurada quando o banco estiver pronto.');
+  const { error } = await backend.auth.updateUser({ password: d.password });
+  if (error) fail(error.message);
+  history.replaceState(null, '', location.pathname); toast('Senha redefinida. Entre novamente.'); await backend.auth.signOut(); go('#/login');
+};
+ACTIONS.logout = async () => {
+  audit('Logout'); save(); clearTimeout(saveTimer);
+  if (!LOCAL_MODE) { await saveQueue; await syncRemoteState(); }
+  else localStorage.removeItem(LOCAL_SESSION_KEY);
+  if (!LOCAL_MODE) await backend.auth.signOut();
+  sessionId = null; sessionAuthId = null; remoteReady = false; go('#/login');
+};
+
+// ============================================================================
+// 7. TELAS DO ALUNO
+// ============================================================================
+// Cursos que o usuário pode ver: staff vê todos; aluno vê os publicados e os que já está inscrito.
+const visibleCourses = (u) => S.courses.filter((c) => isStaff() || c.status === 'publicado' || isEnrolled(u.id, c.id));
+// Seletor de filtro: ao mudar, atualiza a lista na hora (veja o evento "input" na seção 9).
+const fsel = (label, key, opts, val) => `<label>${label}<select data-filter="${key}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === val ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+const ICON = { video: '▶', link: '🔗', texto: '📄' };
+const ytId = (url) => ((url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/) || [])[1] || '';
+
+// ---------- INÍCIO ----------
+VIEWS.home = async () => {
+  const u = me(), li = levelInfo(u.xp), st = userStats(u), checked = u.lastCheckin === todayISO();
+  const mine = S.enrollments.filter((e) => e.userId === u.id).map((e) => ({ e, c: course(e.courseId), p: courseProg(u.id, e.courseId) })).filter((x) => x.c);
+  const pend = mine.filter((x) => !x.p.complete);
+  const duty = pend.filter((x) => x.c.mandatory).sort((a, b) => (dueOf(a.e, a.c) || '9').localeCompare(dueOf(b.e, b.c) || '9'));
+  const cont = pend.find((x) => x.p.done > 0) || pend[0];
+  const recs = visibleCourses(u).filter((c) => !isEnrolled(u.id, c.id) && c.status === 'publicado').slice(0, 3);
+  const news = S.announcements.slice().sort((a, b) => (b.pinned - a.pinned) || b.at - a.at).slice(0, 3);
+  app.innerHTML = `
+    <div class="hero"><div class="grow"><div class="small">${esc(u.dept || ROLE[u.role])}</div><h1>Olá, ${esc(u.name.split(' ')[0])}!</h1>
+      <p style="margin:6px 0">Nível ${li.level} · ${li.title} · ${u.xp} XP${st.streak ? ` · 🔥 ${st.streak} dia${st.streak > 1 ? 's' : ''} seguidos` : ''}</p>
+      <div class="bar"><span style="width:${li.pct}%"></span></div><div class="small" style="margin-top:4px">${li.next - u.xp} XP para o nível ${li.level + 1}</div></div>
+      <div class="actions"><button class="btn gold" data-action="checkin" ${checked ? 'disabled' : ''}>${checked ? 'Check-in feito hoje ✓' : `Check-in diário (+${S.settings.dailyBonus} pts)`}</button><a class="btn ghost" style="color:#fff;border-color:#fff" href="#/store">Ir à loja</a></div></div>
+    <div class="grid sm" style="margin-bottom:20px">
+      <div class="stat"><b>${u.points}</b><span>Pontos disponíveis</span></div><div class="stat"><b>${pend.length}</b><span>Cursos em andamento</span></div>
+      <div class="stat"><b>${st.courses}</b><span>Cursos concluídos</span></div><div class="stat"><b>${st.lessons}</b><span>Aulas concluídas</span></div>
+      <div class="stat"><b>${u.badges.length}/${BADGES.length}</b><span>Conquistas</span></div></div>
+    ${isAdmin() && !S.courses.length ? panel('<h2>Plataforma vazia</h2><p class="muted">Quer ver tudo funcionando? Carregue cursos, produtos e alunos de exemplo (você pode apagar depois).</p><button class="btn" data-action="seed">Carregar dados de demonstração</button>') : ''}
+    ${duty.length ? panel(`<h2>⚠ Obrigatórios pendentes</h2>${duty.map((x) => `<div class="spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><a href="#/course/${x.c.id}"><strong>${esc(x.c.title)}</strong></a><div class="muted small">${x.p.done}/${x.p.total} aulas${x.p.quizOk ? '' : ' · prova pendente'}</div></div>${dueTag(dueOf(x.e, x.c))}</div>`).join('')}`) : ''}
+    ${cont ? panel(`<h2>Continuar estudando</h2><div class="spread"><div><strong>${esc(cont.c.title)}</strong><div class="bar" style="width:260px;margin-top:6px"><span style="width:${cont.p.pct}%"></span></div><div class="muted small">${cont.p.pct}% concluído</div></div><a class="btn" href="#/course/${cont.c.id}">Continuar</a></div>`) : ''}
+    ${news.length ? panel(`<h2>📢 Mural de avisos</h2>${news.map((n) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong> <span class="muted small">${fmtDate(n.at)}</span><div>${esc(n.text)}</div></div>`).join('')}`) : ''}
+    ${recs.length ? `<h2>Recomendados para você</h2><div class="grid" style="margin-bottom:20px">${recs.map((c) => courseCard(c, u)).join('')}</div>` : ''}
+    <h2>Conquistas</h2><div class="badges">${BADGES.map((b) => `<div class="badge ${u.badges.includes(b.id) ? '' : 'locked'}"><div class="ic">${b.icon}</div><strong>${b.name}</strong><div class="muted small">${b.desc}</div></div>`).join('')}</div>`;
+};
+ACTIONS.checkin = () => { const t = checkin(me().id); if (t) toast(`Check-in feito! +${t} pontos`); renderChrome(); rerender(); };
+ACTIONS.seed = async () => { need('admin'); await seedDemo(); toast('Cursos, aulas e produtos de demonstração carregados.'); rerender(); };
+
+// ---------- CATÁLOGO DE CURSOS ("Cursos" e "Meus cursos") ----------
+let catalogMode = 'all';
+VIEWS.courses = () => { catalogMode = 'all'; viewCatalog(); };
+VIEWS.mine = () => { catalogMode = 'mine'; viewCatalog(); };
+// Aplica busca, filtros e ordenação.
+function filterCourses(u) {
+  const f = FILTERS.C; let L = visibleCourses(u);
+  if (catalogMode === 'mine') L = L.filter((c) => isEnrolled(u.id, c.id));
+  const q = f.q.toLowerCase().trim(); if (q) L = L.filter((c) => `${c.title} ${c.description} ${c.area} ${c.instructor}`.toLowerCase().includes(q));
+  if (f.cat) L = L.filter((c) => c.category === f.cat); if (f.area) L = L.filter((c) => c.area === f.area); if (f.level) L = L.filter((c) => c.level === f.level);
+  const st = { inscritos: (c) => isEnrolled(u.id, c.id), nao: (c) => !isEnrolled(u.id, c.id), andamento: (c) => isEnrolled(u.id, c.id) && !courseProg(u.id, c.id).complete && courseProg(u.id, c.id).done > 0,
+    concluidos: (c) => courseProg(u.id, c.id).complete, obrigatorios: (c) => c.mandatory, favoritos: (c) => isFav(u.id, c.id) }[f.status];
+  if (st) L = L.filter(st);
+  const by = { recent: (a, b) => b.createdAt - a.createdAt, title: (a, b) => a.title.localeCompare(b.title), popular: (a, b) => S.enrollments.filter((e) => e.courseId === b.id).length - S.enrollments.filter((e) => e.courseId === a.id).length, rating: (a, b) => avgRating(b.id).avg - avgRating(a.id).avg }[f.sort];
+  return L.sort(by);
+}
+const courseListHTML = () => { const u = me(), L = filterCourses(u); return L.length ? L.map((c) => courseCard(c, u)).join('') : `<div class="panel empty" style="grid-column:1/-1">${catalogMode === 'mine' ? 'Você ainda não está inscrito em nenhum curso (ou nenhum bate com o filtro).' : 'Nenhum curso encontrado.'}</div>`; };
+REFRESH.C = () => { $('course-list').innerHTML = courseListHTML(); };
+function viewCatalog() {
+  const f = FILTERS.C, areas = [...new Set(S.courses.map((c) => c.area).filter(Boolean))].sort();
+  app.innerHTML = `<div class="page-head"><h1>${catalogMode === 'mine' ? 'Meus cursos' : 'Cursos e padrões de serviço'}</h1>${isStaff() ? '<button class="btn" data-action="course-new">+ Novo curso</button>' : ''}</div>
+    <div class="panel"><div class="row"><label>Buscar<input data-filter="C.q" value="${esc(f.q)}" placeholder="Título, área, instrutor..."></label>
+      ${fsel('Tipo', 'C.cat', [['', 'Todos'], ['curso', 'Cursos'], ['padrao_servico', 'Padrões de serviço']], f.cat)}
+      ${fsel('Área', 'C.area', [['', 'Todas'], ...areas.map((a) => [a, a])], f.area)}
+      ${fsel('Nível', 'C.level', [['', 'Todos'], ...Object.entries(LEVELS)], f.level)}
+      ${fsel('Situação', 'C.status', [['', 'Todas'], ['andamento', 'Em andamento'], ['concluidos', 'Concluídos'], ['obrigatorios', 'Obrigatórios'], ['favoritos', 'Favoritos'], ...(catalogMode === 'all' ? [['inscritos', 'Inscrito'], ['nao', 'Não inscrito']] : [])], f.status)}
+      ${fsel('Ordenar', 'C.sort', [['recent', 'Mais recentes'], ['title', 'Título (A-Z)'], ['popular', 'Mais populares'], ['rating', 'Melhor avaliados']], f.sort)}</div></div>
+    <div class="grid" id="course-list">${courseListHTML()}</div>`;
+}
+// Cartão de curso (clicável). O botão de favorito tem ação própria.
+function courseCard(c, u) {
+  const en = enrollment(u.id, c.id), p = courseProg(u.id, c.id), r = avgRating(c.id), fav = isFav(u.id, c.id);
+  return `<div class="card course" data-action="go" data-href="#/course/${c.id}"><div class="cover" style="--h:${hue(c.id)}"><span>${esc(c.emoji || '📘')}</span>
+    <button class="fav ${fav ? 'on' : ''}" data-action="fav" data-id="${c.id}" aria-label="Favoritar">${fav ? '★' : '☆'}</button></div>
+    <div class="tags">${tag(CAT[c.category], c.category === 'padrao_servico' ? 'service' : '')}${c.mandatory ? tag('Obrigatório', 'bad') : ''}${c.status !== 'publicado' ? tag('Rascunho', 'warn') : ''}${p.complete ? tag('Concluído ✓', 'ok') : ''}</div>
+    <h3><a href="#/course/${c.id}">${esc(c.title)}</a></h3><p class="muted clamp">${esc(c.description)}</p>
+    <div class="muted small">${p.total} aula${p.total === 1 ? '' : 's'} · ${fmtDur(courseHours(c.id))}${r.n ? ` · ★ ${r.avg.toFixed(1)}` : ''}</div>
+    ${en ? `<div class="bar"><span style="width:${p.pct}%"></span></div><div class="actions small muted">${p.pct}% concluído ${dueTag(dueOf(en, c), p.complete)}</div>` : '<div class="muted small">Não inscrito</div>'}</div>`;
+}
+ACTIONS.go = (d) => { location.hash = d.href; };
+ACTIONS.fav = (d) => { const u = me(), id = Number(d.id); S.favorites = isFav(u.id, id) ? S.favorites.filter((f) => !(f.userId === u.id && f.courseId === id)) : [...S.favorites, { userId: u.id, courseId: id }]; save(); rerender(); };
+
+// Biblioteca central: lista vídeos dos cursos acessíveis e abre a aula selecionada.
+VIEWS.videos = () => {
+  const u = me();
+  const videos = S.lessons.filter((l) => ['video', 'link'].includes(l.type) && (isStaff() || isEnrolled(u.id, l.courseId)))
+    .map((l) => ({ l, c: course(l.courseId) })).filter((x) => x.c)
+    .sort((a, b) => a.c.title.localeCompare(b.c.title) || a.l.position - b.l.position);
+  app.innerHTML = `<div class="page-head"><div><h1>Vídeos</h1><p class="muted">Aulas em vídeo disponíveis nos seus cursos.</p></div><span class="muted small">${videos.length} ${videos.length === 1 ? 'vídeo' : 'vídeos'}</span></div>
+    ${videos.length ? `<div class="grid">${videos.map(({ l, c }) => {
+      const w = S.watch[u.id + ':' + l.id], pct = w?.dur ? Math.min(100, Math.round((covered(w.ranges || []) / w.dur) * 100)) : 0;
+      return `<article class="card"><div class="spread"><span class="tag">${l.type === 'video' ? 'Arquivo de vídeo' : 'Vídeo por link'}</span><span class="muted small">${l.duration ? fmtDur(l.duration) : 'Duração não informada'}</span></div>
+        <h2>${esc(l.title)}</h2><p class="muted small">${esc(c.title)}${l.module ? ` · ${esc(l.module)}` : ''}</p>
+        ${pct ? `<div class="bar" aria-label="${pct}% assistido"><span style="width:${pct}%"></span></div><span class="muted small">${pct}% assistido</span>` : ''}
+        <button class="btn" data-action="watch-video" data-id="${l.id}">▶ ${w?.pos > 0 ? 'Continuar reprodução' : 'Reproduzir vídeo'}</button></article>`;
+    }).join('')}</div>` : `<div class="panel empty"><h2>Nenhum vídeo disponível</h2><p>${isStaff() ? 'Adicione aulas do tipo vídeo ou link aos cursos para que apareçam aqui.' : 'Inscreva-se em um curso com aulas em vídeo para encontrá-las aqui.'}</p>${isStaff() && S.courses.length ? `<a class="btn" href="#/admin/courses">Gerenciar cursos</a>` : ''}</div>`}`;
+};
+ACTIONS['watch-video'] = (d) => {
+  const l = lesson(d.id);
+  if (!l || (!isStaff() && !isEnrolled(me().id, l.courseId))) fail('Este vídeo não está disponível para sua conta.');
+  curCourse = l.courseId; courseTab = 'aulas'; curLesson = l.id; go('#/course/' + l.courseId);
+};
+
+// ---------- PÁGINA DO CURSO ----------
+let courseTab = 'aulas', curLesson = null, curCourse = null; // aba aberta, aula tocando e curso atual
+// Em cursos "sequenciais" a aula só abre depois de concluir a anterior.
+const lockedLesson = (l, ls, u, c) => { const i = ls.findIndex((x) => x.id === l.id); return c.sequential && !isStaff() && i > 0 && !isDone(u.id, ls[i - 1].id); };
+
+VIEWS.course = async (id) => {
+  id = Number(id); const c = course(id); if (!c) fail('Curso não encontrado.');
+  const u = me(), staff = isStaff();
+  if (c.status !== 'publicado' && !staff && !isEnrolled(u.id, id)) fail('Este curso não está disponível.');
+  if (curCourse !== id) { curCourse = id; courseTab = 'aulas'; curLesson = null; }
+  const en = enrollment(u.id, id), canView = !!en || staff, ls = lessonsOf(id), p = courseProg(u.id, id), cert = certOf(u.id, id), q = quizOf(id), r = avgRating(id);
+  const pre = c.prereq ? course(c.prereq) : null, preOk = !pre || staff || !!certOf(u.id, pre.id);
+  // Escolhe a aula aberta: a primeira não concluída e liberada.
+  if (!curLesson || !lesson(curLesson) || lesson(curLesson).courseId !== id || lockedLesson(lesson(curLesson), ls, u, c)) curLesson = (ls.find((l) => !isDone(u.id, l.id) && !lockedLesson(l, ls, u, c)) || ls[0] || {}).id || null;
+  const mine = S.ratings.find((x) => x.userId === u.id && x.courseId === id)?.stars || 0;
+  const tabs = [['aulas', 'Aulas'], ['sobre', 'Sobre e materiais'], ['discussao', `Discussão (${S.comments.filter((x) => x.courseId === id).length})`], ...(q ? [['prova', 'Prova']] : [])];
+  const body = courseTab === 'sobre' ? tabSobre(c, canView) : courseTab === 'discussao' ? tabDiscussao(c, u, canView) : courseTab === 'prova' && q ? tabProva(c, u, canView, p) : tabAulas(c, ls, u, canView, preOk, pre);
+  app.innerHTML = `<div class="panel"><div class="spread" style="align-items:flex-start"><div style="flex:1 1 380px">
+      <div class="tags">${tag(CAT[c.category], c.category === 'padrao_servico' ? 'service' : '')}${c.mandatory ? tag('Obrigatório', 'bad') : ''}${c.sequential ? tag('Aulas em sequência') : ''}${c.status !== 'publicado' ? tag('Rascunho', 'warn') : ''}${tag(LEVELS[c.level] || '')}</div>
+      <h1 style="margin-top:8px">${esc(c.emoji || '')} ${esc(c.title)}</h1><p class="muted">${esc(c.description)}</p>
+      <div class="muted small">👤 ${esc(c.instructor || '—')} · 🏷 ${esc(c.area || 'Geral')} · ⏱ ${fmtDur(courseHours(id))} · 👥 ${S.enrollments.filter((e) => e.courseId === id).length} inscritos · 🎯 +${c.bonus} pontos ao concluir</div>
+      <div class="stars" style="margin-top:6px">${r.n ? `<strong>★ ${r.avg.toFixed(1)}</strong> <span class="muted small">(${r.n})</span> ` : '<span class="muted small">Sem avaliações </span>'}${en ? [1, 2, 3, 4, 5].map((n) => `<button class="${n <= mine ? 'on' : ''}" data-action="rate" data-id="${id}" data-stars="${n}" aria-label="${n} estrelas">★</button>`).join('') : ''}</div></div>
+      <div class="actions">${!en && !staff ? `<button class="btn" data-action="enroll" data-id="${id}" ${preOk ? '' : 'disabled'}>Inscrever-me</button>` : ''}${en && !staff ? `<button class="btn ghost small" data-action="unenroll" data-id="${id}">Cancelar inscrição</button>` : ''}
+        <button class="btn ghost small" data-action="fav" data-id="${id}">${isFav(u.id, id) ? '★ Favorito' : '☆ Favoritar'}</button>
+        ${staff ? `<button class="btn ghost small" data-action="course-edit" data-id="${id}">Editar curso</button><button class="btn ghost small" data-action="quiz-edit" data-id="${id}">${q ? 'Editar prova' : 'Criar prova'}</button><button class="btn ghost small" data-action="assign-open" data-id="${id}">Atribuir</button><button class="btn ghost small" data-action="course-publish" data-id="${id}">${c.status === 'publicado' ? 'Despublicar' : 'Publicar'}</button>` : ''}</div></div>
+      ${pre && !preOk ? `<div class="notice" style="margin-top:12px">Pré-requisito: conclua primeiro <a href="#/course/${pre.id}">${esc(pre.title)}</a>.</div>` : ''}
+      ${en ? `<div style="margin-top:14px"><div class="bar"><span id="prog-bar" style="width:${p.pct}%"></span></div><div class="actions small muted" style="margin-top:4px"><span id="prog-text">${p.done}/${p.total} aulas · ${p.pct}%</span>${q ? (p.quizOk ? tag('Prova aprovada ✓', 'ok') : tag('Prova pendente', 'warn')) : ''}${dueTag(dueOf(en, c), p.complete)}${cert ? `<a class="btn gold small" href="#/certificate/${cert.code}">🎓 Ver certificado</a>` : ''}</div></div>` : ''}</div>
+    <div class="tabs">${tabs.map(([k, l]) => `<button class="${courseTab === k ? 'on' : ''}" data-action="ctab" data-tab="${k}">${l}</button>`).join('')}</div>${body}`;
+  if (courseTab === 'aulas') await setupMedia();
+};
+ACTIONS.ctab = (d) => { courseTab = d.tab; rerender(); };
+ACTIONS.enroll = async (d) => {
+  const u = me(), c = course(d.id), pre = c.prereq ? course(c.prereq) : null;
+  if (pre && !isStaff() && !certOf(u.id, pre.id)) fail(`Conclua antes: ${pre.title}`);
+  const added = !isEnrolled(u.id, c.id);
+  if (added) S.enrollments.push({ userId: u.id, courseId: c.id, at: Date.now(), dueDate: '' });
+  if (added && !LOCAL_MODE) {
+    try { await syncCollection('enrollments'); }
+    catch (error) { S.enrollments = S.enrollments.filter((e) => !(e.userId === u.id && e.courseId === c.id)); throw error; }
+    const { data, error } = await backend.from('app_records').select('payload').eq('collection', 'quizzes').eq('record_id', String(c.id)).is('owner_id', null).maybeSingle();
+    if (error) fail(error.message); if (data && !quizOf(c.id)) S.quizzes.push(data.payload);
+  }
+  audit(`Inscrição: ${c.title}`); save(); toast('Inscrição feita!'); rerender();
+};
+ACTIONS.unenroll = (d) => { if (!confirm('Cancelar sua inscrição? Seu progresso é mantido.')) return; const u = me(); S.enrollments = S.enrollments.filter((e) => !(e.userId === u.id && e.courseId === Number(d.id))); save(); rerender(); };
+ACTIONS.rate = (d) => { const u = me(), id = Number(d.id); S.ratings = S.ratings.filter((x) => !(x.userId === u.id && x.courseId === id)); S.ratings.push({ userId: u.id, courseId: id, stars: Number(d.stars) }); save(); toast('Obrigado pela avaliação!'); rerender(); };
+
+// Aba AULAS: player (ou texto) à esquerda e lista de aulas por módulo à direita.
+function tabAulas(c, ls, u, canView, preOk, pre) {
+  const staff = isStaff();
+  if (!ls.length) return panel('<div class="empty">Este curso ainda não tem aulas.</div>' + (staff ? `<div style="text-align:center"><button class="btn" data-action="lesson-new" data-id="${c.id}">+ Adicionar aula</button></div>` : ''));
+  let lastMod = null;
+  const items = ls.map((x) => {
+    let h = ''; const mod = x.module || ''; if (mod !== lastMod) { h = `<li class="mod">${esc(mod || 'Aulas')}</li>`; lastMod = mod; }
+    const lk = lockedLesson(x, ls, u, c), dn = isDone(u.id, x.id);
+    return h + `<li class="l ${dn ? 'done' : ''} ${x.id === curLesson ? 'active' : ''} ${lk ? 'locked' : ''}" data-action="lesson" data-id="${x.id}"><span class="check">${dn ? '✓' : lk ? '🔒' : ''}</span>
+      <span>${ICON[x.type] || ''} ${esc(x.title)}</span><span class="pts">${x.duration ? x.duration + ' min · ' : ''}+${x.points}</span>
+      ${staff ? `<button class="btn ghost small" data-action="lesson-up" data-id="${x.id}" aria-label="Subir">↑</button><button class="btn ghost small" data-action="lesson-down" data-id="${x.id}" aria-label="Descer">↓</button><button class="btn ghost small" data-action="lesson-edit" data-id="${x.id}" aria-label="Editar">✎</button><button class="btn danger small" data-action="lesson-del" data-id="${x.id}" aria-label="Excluir">✕</button>` : ''}</li>`;
+  }).join('');
+  const main = canView ? lessonView(c, ls, lesson(curLesson), u) : panel(`<div class="empty"><p>Inscreva-se para assistir às aulas e ganhar pontos.</p><button class="btn" data-action="enroll" data-id="${c.id}" ${preOk ? '' : 'disabled'}>Inscrever-me</button></div>`);
+  return `<div class="course-layout"><div>${main}</div><aside class="panel"><div class="spread"><h3>Aulas (${ls.length})</h3>${staff ? `<button class="btn small" data-action="lesson-new" data-id="${c.id}">+ Aula</button>` : ''}</div><ul class="lessons">${items}</ul></aside></div>`;
+}
+// Conteúdo da aula aberta: vídeo, YouTube ou texto, botões e anotações.
+function lessonView(c, ls, l, u) {
+  const dn = isDone(u.id, l.id), next = ls[ls.findIndex((x) => x.id === l.id) + 1], yt = l.type === 'link' ? ytId(l.url) : '';
+  const tracked = l.type === 'video' || (l.type === 'link' && !yt); // só vídeos próprios/diretos têm controle de quanto foi assistido
+  const media = l.type === 'texto' ? `<article class="panel prose">${renderText(l.content || '')}</article>`
+    : yt ? `<iframe class="player" src="https://www.youtube-nocookie.com/embed/${yt}" allowfullscreen title="${esc(l.title)}"></iframe>`
+    : `<video id="player" class="player" controls controlsList="nodownload" preload="metadata" data-lesson="${l.id}"></video>`;
+  return media + `<div class="panel" style="margin-top:16px"><div class="spread"><div><h2>${esc(l.title)}</h2><div class="muted small">${esc(l.module || '')} · +${l.points} pontos</div></div>
+    <div class="actions" id="lesson-actions">${dn ? tag('Concluída ✓', 'ok') : tracked && !isStaff() ? `<span class="muted small">Conclui sozinha ao assistir ${S.settings.minWatchPct}%</span>` : `<button class="btn" data-action="complete" data-id="${l.id}">Marcar como concluída</button>`}
+      ${next ? `<button class="btn ghost" data-action="lesson-next" data-id="${next.id}">Próxima aula →</button>` : ''}</div></div>
+    ${tracked ? '<label class="small">Velocidade <select data-speed style="width:auto;display:inline-block"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label>' : ''}
+    <label>Minhas anotações (salvas automaticamente)<textarea data-note="${l.id}" placeholder="Escreva aqui...">${esc(S.notes[u.id + ':' + l.id] || '')}</textarea></label></div>`;
+}
+// Liga o vídeo: carrega o arquivo, retoma de onde parou e controla o quanto foi assistido (anti-pulo).
+async function setupMedia() {
+  const v = $('player'); if (!v) return;
+  const lid = Number(v.dataset.lesson), l = lesson(lid), u = me();
+  if (l.type === 'video') {
+    if (l.filePath && !LOCAL_MODE) {
+      const { data, error } = await backend.storage.from('course-videos').createSignedUrl(l.filePath, 3600);
+      if (error) { toast(error.message, true); return; } mediaUrl = data.signedUrl; v.src = mediaUrl;
+    } else {
+      const blob = l.fileId ? await idbGet(l.fileId) : null;
+      if (!blob) { toast('Arquivo de vídeo não encontrado neste navegador.', true); return; }
+      mediaUrl = URL.createObjectURL(blob); v.src = mediaUrl;
+    }
+  }
+  else v.src = l.url;
+  const key = u.id + ':' + lid, w = S.watch[key] || (S.watch[key] = { pos: 0, ranges: [], dur: 0 });
+  let last = 0, lastSave = 0;
+  const enough = () => w.dur && (covered(w.ranges) / w.dur) * 100 >= S.settings.minWatchPct;
+  v.addEventListener('loadedmetadata', () => { w.dur = v.duration; if (w.pos > 3 && w.pos < v.duration - 5) v.currentTime = w.pos; last = v.currentTime; });
+  v.addEventListener('seeking', () => { last = v.currentTime; });
+  v.addEventListener('timeupdate', () => {
+    const t = v.currentTime; if (!v.seeking && t >= last && t - last < 2) addRange(w.ranges, Math.floor(last), Math.ceil(t));
+    last = t; w.pos = t; w.dur = v.duration || w.dur;
+    if (Date.now() - lastSave > 5000) { save(); lastSave = Date.now(); }
+    if (!isDone(u.id, lid) && enough()) finishLesson(lid);
+  });
+  v.addEventListener('pause', save);
+  v.addEventListener('ended', () => { save(); if (!isDone(u.id, lid) && !enough()) toast(`Assista pelo menos ${S.settings.minWatchPct}% da aula (sem pular trechos) para concluir.`, true); });
+  v.addEventListener('ratechange', () => {});
+}
+// Conclui a aula e atualiza a tela sem interromper o vídeo.
+function finishLesson(lid) {
+  const u = me(), r = completeLesson(u.id, lid); if (!r) return;
+  toast(r.earned ? `Aula concluída! +${r.earned} pontos` : 'Aula concluída!'); if (r.cert) setTimeout(() => toast('🎓 Curso concluído! Seu certificado foi emitido.'), 2600);
+  const li = document.querySelector(`.lessons li[data-id="${lid}"]`); if (li) { li.classList.add('done'); li.querySelector('.check').textContent = '✓'; }
+  const p = courseProg(u.id, lesson(lid).courseId); if ($('prog-bar')) { $('prog-bar').style.width = p.pct + '%'; $('prog-text').textContent = `${p.done}/${p.total} aulas · ${p.pct}%`; }
+  const a = $('lesson-actions'); if (a && !a.querySelector('.tag')) a.insertAdjacentHTML('afterbegin', tag('Concluída ✓', 'ok'));
+  renderChrome();
+}
+ACTIONS.lesson = (d) => { const l = lesson(d.id), c = course(l.courseId); if (lockedLesson(l, lessonsOf(c.id), me(), c)) return toast('Conclua a aula anterior para liberar esta.', true); curLesson = l.id; rerender(); };
+ACTIONS['lesson-next'] = (d) => { const l = lesson(d.id), c = course(l.courseId); if (lockedLesson(l, lessonsOf(c.id), me(), c)) return toast('Conclua esta aula para liberar a próxima.', true); curLesson = l.id; rerender(); window.scrollTo(0, 0); };
+ACTIONS.complete = (d) => { finishLesson(Number(d.id)); rerender(); };
+
+// Aba SOBRE E MATERIAIS: descrição completa e arquivos de apoio para baixar.
+function tabSobre(c, canView) {
+  const mats = c.materials || [];
+  return panel(`<h2>Sobre o curso</h2><div class="prose">${renderText(c.description)}</div>${c.objectives ? `<h3>Objetivos</h3><div class="prose">${renderText(c.objectives)}</div>` : ''}`)
+    + panel(`<h2>Materiais de apoio</h2>${mats.length ? `<ul>${mats.map((m) => `<li>${esc(m.name)} <span class="muted small">(${Math.max(1, Math.round(m.size / 1024))} KB)</span> ${canView ? `<button class="btn small ghost" data-action="mat-dl" data-id="${c.id}" data-mid="${m.id}">Baixar</button>` : ''}${isStaff() ? ` <button class="btn small danger" data-action="mat-del" data-id="${c.id}" data-mid="${m.id}">Excluir</button>` : ''}</li>`).join('')}</ul>` : '<p class="muted">Nenhum material enviado.</p>'}
+      ${isStaff() ? `<form data-form="material" data-id="${c.id}" class="row"><label>Nome do material<input name="name" required></label><label>Arquivo<input type="file" name="file" required></label><div><button class="btn" type="submit">Enviar material</button></div></form>` : ''}`);
+}
+FORMS.material = async (d, form) => {
+  need('staff'); const c = course(form.dataset.id), f = form.file.files[0]; if (!f) fail('Escolha um arquivo.');
+  const id = nid(), filename = f.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-100) || 'arquivo';
+  let filePath = null, fileId = id;
+  if (LOCAL_MODE) await idbPut(fileId, f);
+  else {
+    filePath = `${c.id}/${id}/${filename}`;
+    const { error } = await backend.storage.from('course-materials').upload(filePath, f, { contentType: f.type, upsert: false });
+    if (error) fail(error.message);
+    fileId = null;
+  }
+  (c.materials = c.materials || []).push({ id, name: d.name.trim() || f.name, filePath, fileId, size: f.size, type: f.type });
+  save(); toast('Material enviado.'); rerender();
+};
+ACTIONS['mat-dl'] = async (d) => {
+  const m = course(d.id).materials.find((x) => x.id === Number(d.mid));
+  if (m.filePath && !LOCAL_MODE) {
+    const { data, error } = await backend.storage.from('course-materials').createSignedUrl(m.filePath, 300);
+    if (error) fail(error.message); const response = await fetch(data.signedUrl); if (!response.ok) fail('Não foi possível baixar o material.');
+    downloadBlob(m.name, await response.blob());
+  } else { const blob = await idbGet(m.fileId); if (!blob) fail('Arquivo não encontrado neste navegador.'); downloadBlob(m.name, blob); }
+};
+ACTIONS['mat-del'] = async (d) => {
+  need('staff'); if (!confirm('Excluir este material?')) return;
+  const c = course(d.id), m = c.materials.find((x) => x.id === Number(d.mid));
+  if (m.filePath && !LOCAL_MODE) { const { error } = await backend.storage.from('course-materials').remove([m.filePath]); if (error) fail(error.message); }
+  if (m.fileId) await idbDel(m.fileId); c.materials = c.materials.filter((x) => x !== m); save(); rerender();
+};
+
+// Aba DISCUSSÃO: perguntas e respostas do curso.
+function tabDiscussao(c, u, canView) {
+  const cs = S.comments.filter((x) => x.courseId === c.id), top = cs.filter((x) => !x.parentId).sort((a, b) => b.at - a.at);
+  const one = (x, reply) => { const a = user(x.userId) || { id: 0, name: 'Usuário removido' };
+    return `<div class="comment ${reply ? 'reply' : ''}">${avatar(a, 'sm')}<div style="flex:1"><strong>${esc(a.name)}</strong> ${a.role && a.role !== 'aluno' ? tag(ROLE[a.role]) : ''} <span class="muted small">${fmtDate(x.at)}</span>
+      <div>${esc(x.text).replace(/\n/g, '<br>')}</div><div class="actions">${canView && !reply ? `<button class="btn ghost small" data-action="reply" data-id="${x.id}" data-course="${c.id}">Responder</button>` : ''}${x.userId === u.id || isStaff() ? `<button class="btn danger small" data-action="comment-del" data-id="${x.id}">Excluir</button>` : ''}</div></div></div>`; };
+  return panel(`<h2>Discussão</h2>${canView ? `<form data-form="comment" data-id="${c.id}"><label>Escreva uma pergunta ou comentário<textarea name="text" required maxlength="1000"></textarea></label><button class="btn" type="submit">Publicar</button></form>` : '<p class="muted">Inscreva-se para participar.</p>'}`)
+    + panel(top.length ? top.map((x) => one(x, false) + cs.filter((y) => y.parentId === x.id).sort((a, b) => a.at - b.at).map((y) => one(y, true)).join('')).join('') : '<div class="empty">Ninguém comentou ainda. Seja o primeiro!</div>');
+}
+FORMS.comment = (d, form) => { const u = me(); if (!d.text.trim()) fail('Escreva algo.'); S.comments.push({ id: nid(), courseId: Number(form.dataset.id), userId: u.id, text: d.text.trim(), at: Date.now(), parentId: 0 }); save(); rerender(); };
+ACTIONS.reply = (d) => { const t = prompt('Sua resposta:'); if (!t || !t.trim()) return; S.comments.push({ id: nid(), courseId: Number(d.course), userId: me().id, text: t.trim().slice(0, 1000), at: Date.now(), parentId: Number(d.id) }); save(); rerender(); };
+ACTIONS['comment-del'] = (d) => { const id = Number(d.id), x = S.comments.find((c) => c.id === id); if (x.userId !== me().id && !isStaff()) fail('Sem permissão.'); if (!confirm('Excluir este comentário?')) return; S.comments = S.comments.filter((c) => c.id !== id && c.parentId !== id); save(); rerender(); };
+
+// Aba PROVA: regras, melhor nota e histórico de tentativas.
+function tabProva(c, u, canView, p) {
+  const q = quizOf(c.id), mine = S.attempts.filter((a) => a.userId === u.id && a.courseId === c.id), best = mine.reduce((m, a) => Math.max(m, a.score), 0);
+  const left = q.maxAttempts ? q.maxAttempts - mine.length : Infinity, allDone = p.done === p.total;
+  return panel(`<h2>Prova final</h2><p>${q.questions.length} perguntas · nota mínima ${q.passScore}% · ${q.maxAttempts ? q.maxAttempts + ' tentativas' : 'tentativas ilimitadas'} · vale ${q.points} pontos na primeira aprovação.</p>
+    ${mine.length ? `<p>Melhor nota: <strong>${best}%</strong> ${mine.some((a) => a.passed) ? tag('Aprovado ✓', 'ok') : tag('Ainda não aprovado', 'bad')} · tentativas usadas: ${mine.length}</p>` : ''}
+    ${!canView ? '<p class="muted">Inscreva-se para fazer a prova.</p>' : !allDone && !isStaff() ? '<p class="muted">Conclua todas as aulas para liberar a prova.</p>' : left <= 0 && !isStaff() ? '<p class="muted">Você usou todas as tentativas. Fale com o instrutor.</p>' : `<a class="btn" href="#/quiz/${c.id}">${mine.length ? 'Tentar novamente' : 'Fazer a prova'}</a>`}`)
+    + (mine.length ? panel(`<h3>Histórico de tentativas</h3><div class="table-wrap"><table><tr><th>Data</th><th>Nota</th><th>Resultado</th></tr>${mine.slice().reverse().map((a) => `<tr><td>${fmtDate(a.at)}</td><td>${a.score}%</td><td>${a.passed ? 'Aprovado' : 'Reprovado'}</td></tr>`).join('')}</table></div>`) : '');
+}
+
+// ---------- PROVA (fazer e ver resultado) ----------
+VIEWS.quiz = async (cid) => {
+  cid = Number(cid); const c = course(cid), q = quizOf(cid), u = me(); if (!c || !q) fail('Prova não encontrada.');
+  if (!isEnrolled(u.id, cid) && !isStaff()) fail('Inscreva-se no curso para fazer a prova.');
+  const p = courseProg(u.id, cid); if (p.done < p.total && !isStaff()) fail('Conclua todas as aulas antes da prova.');
+  const used = S.attempts.filter((a) => a.userId === u.id && a.courseId === cid).length; if (q.maxAttempts && used >= q.maxAttempts && !isStaff()) fail('Você usou todas as tentativas.');
+  app.innerHTML = `<div class="page-head"><div><a href="#/course/${cid}">← ${esc(c.title)}</a><h1>Prova final</h1></div><span class="muted">Nota mínima: ${q.passScore}%</span></div>
+    <form data-form="quiz" data-id="${cid}">${q.questions.map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}" required> ${esc(o)}</label>`).join('')}</div>`).join('')}
+    <button class="btn" type="submit">Enviar respostas</button></form>`;
+};
+// Corrige a prova, registra a tentativa e dá pontos/certificado na primeira aprovação.
+FORMS.quiz = async (d, form) => {
+  const cid = Number(form.dataset.id), q = quizOf(cid), u = me();
+  const answers = q.questions.map((x, i) => Number(d['q' + i])), right = answers.filter((a, i) => a === q.questions[i].correct).length;
+  const score = Math.round((right / q.questions.length) * 100), passed = score >= q.passScore;
+  const first = passed && !S.attempts.some((a) => a.userId === u.id && a.courseId === cid && a.passed);
+  const att = { id: nid(), userId: u.id, courseId: cid, score, passed, at: Date.now(), answers }; S.attempts.push(att);
+  let cert = null; if (first) { if (q.points > 0) award(u.id, q.points, `Prova aprovada: ${course(cid).title}`); cert = checkCourseCompletion(u.id, cid); }
+  checkBadges(u.id); save(); renderChrome(); showQuizResult(att, cert); window.scrollTo(0, 0);
+};
+function showQuizResult(att, cert) {
+  const c = course(att.courseId), q = quizOf(att.courseId), u = me(), left = q.maxAttempts ? q.maxAttempts - S.attempts.filter((a) => a.userId === u.id && a.courseId === att.courseId).length : Infinity;
+  app.innerHTML = `<div class="panel"><h1>${att.passed ? 'Aprovado! 🎉' : 'Quase lá'}</h1><p class="price">Sua nota: ${att.score}%</p><p class="muted">Nota mínima: ${q.passScore}%</p>
+    ${cert ? `<p>${tag('Certificado emitido ✓', 'ok')} <a class="btn gold small" href="#/certificate/${cert.code}">Ver certificado</a></p>` : ''}
+    <div class="actions"><a class="btn ghost" href="#/course/${c.id}">Voltar ao curso</a>${!att.passed && left > 0 ? `<a class="btn" href="#/quiz/${c.id}">Tentar novamente</a>` : ''}</div></div>
+    ${q.questions.map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<div class="${j === x.correct ? 'right' : att.answers[i] === j ? 'wrong' : ''}" style="padding:6px 8px;border-radius:8px">${j === x.correct ? '✓' : att.answers[i] === j ? '✗' : '○'} ${esc(o)}</div>`).join('')}${x.explain ? `<p class="muted small">💡 ${esc(x.explain)}</p>` : ''}</div>`).join('')}`;
+}
+
+// ---------- CERTIFICADO (com verificação pública) ----------
+function certHTML(ct) {
+  const u = user(ct.userId), c = course(ct.courseId), url = location.href.split('#')[0] + '#/verify/' + ct.code;
+  return `<div class="cert"><div style="font-size:3rem">🎓</div><h1>Certificado de Conclusão</h1><p>Certificamos que</p><div class="name">${esc(u?.name || 'Aluno')}</div>
+    <p>concluiu com êxito o ${c?.category === 'padrao_servico' ? 'padrão de serviço' : 'curso'}</p><h2>${esc(c?.title || 'Curso removido')}</h2>
+    <p>Carga horária: ${fmtDur(courseHours(ct.courseId))} · Instrutor: ${esc(c?.instructor || '—')}</p><p>Emitido em ${new Date(ct.at).toLocaleDateString('pt-BR')} por ${esc(S.settings.platformName)}</p>
+    <p class="small" style="color:#5b6b7a">Código de verificação: <strong>${ct.code}</strong><br>${esc(url)}</p></div>`;
+}
+VIEWS.certificate = (code) => {
+  const ct = S.certificates.find((x) => x.code === code); if (!ct) fail('Certificado não encontrado.');
+  if (ct.userId !== me().id && !isStaff()) fail('Você não tem acesso a este certificado.');
+  app.innerHTML = `<div class="no-print actions" style="margin-bottom:14px"><button class="btn" data-action="print">Imprimir / salvar em PDF</button><a class="btn ghost" href="#/profile">Voltar</a></div>${certHTML(ct)}`;
+};
+async function viewVerify(code) {
+  if (LOCAL_MODE) {
+    const cert = S.certificates.find((x) => x.code === code);
+    if (!cert) {
+      app.innerHTML = '<div class="panel empty"><h2>Certificado não encontrado</h2><p>O código não existe nesta plataforma local.</p></div>'; return;
+    }
+    app.innerHTML = certHTML(cert);
+    return;
+  }
+  const { data, error } = await backend.rpc('verify_course_certificate', { p_code: code });
+  if (error) fail(error.message);
+  const cert = Array.isArray(data) ? data[0] : data;
+  if (!cert?.valid) {
+    app.innerHTML = '<div class="panel empty"><h2>Certificado não encontrado</h2><p>O código não existe nesta plataforma.</p></div>'; return;
+  }
+  const url = location.href.split('#')[0] + '#/verify/' + encodeURIComponent(cert.certificate_code);
+  app.innerHTML = `<div class="notice" style="background:#dcf3e2;color:#17692f">✓ Certificado válido, emitido por ${esc(cert.platform_name)}.</div>
+    <div class="cert"><div style="font-size:3rem">🎓</div><h1>Certificado de Conclusão</h1><p>Certificamos que</p><div class="name">${esc(cert.learner_name)}</div>
+      <p>concluiu com êxito o ${cert.course_category === 'padrao_servico' ? 'padrão de serviço' : 'curso'}</p><h2>${esc(cert.course_title)}</h2>
+      <p>Emitido em ${new Date(cert.issued_at).toLocaleDateString('pt-BR')} por ${esc(cert.platform_name)}</p>
+      <p class="small" style="color:#5b6b7a">Código de verificação: <strong>${esc(cert.certificate_code)}</strong><br>${esc(url)}</p></div>`;
+}
+ACTIONS.print = () => window.print();
+
+// ---------- LOJA DE PONTOS ----------
+function storeGridHTML(u) {
+  const f = FILTERS.S; let L = S.products.filter((p) => p.active); const q = f.q.toLowerCase();
+  if (q) L = L.filter((p) => (p.name + ' ' + p.description).toLowerCase().includes(q)); if (f.cat) L = L.filter((p) => p.category === f.cat); if (f.afford) L = L.filter((p) => u.points >= p.cost);
+  L.sort((a, b) => a.cost - b.cost);
+  if (!L.length) return '<div class="panel empty" style="grid-column:1/-1">Nenhum produto encontrado.</div>';
+  return L.map((p) => {
+    const out = !p.unlimited && p.stock <= 0, got = S.redemptions.filter((r) => r.userId === u.id && r.productId === p.id && r.status !== 'cancelado').length, lim = p.limit && got >= p.limit;
+    return `<div class="card"><div class="cover" style="--h:${hue(p.id)}">${p.image ? `<img src="${p.image}" alt="" style="max-height:88px;border-radius:6px">` : `<span>${esc(p.emoji || '🎁')}</span>`}</div>
+      ${tag(esc(p.category || 'Geral'))}<h3>${esc(p.name)}</h3><p class="muted clamp">${esc(p.description)}</p><div class="price">${p.cost} pontos</div>
+      <div class="muted small">${p.unlimited ? 'Estoque ilimitado' : out ? 'Sem estoque' : p.stock + ' em estoque'}${p.limit ? ` · limite ${p.limit} por pessoa` : ''}</div>
+      <button class="btn" data-action="redeem" data-id="${p.id}" ${out || lim || u.points < p.cost ? 'disabled' : ''}>${out ? 'Esgotado' : lim ? 'Limite atingido' : u.points < p.cost ? `Faltam ${p.cost - u.points} pts` : 'Trocar pontos'}</button></div>`;
+  }).join('');
+}
+REFRESH.S = () => { $('store-grid').innerHTML = storeGridHTML(me()); };
+const STATUS_TAG = { pendente: 'warn', aprovado: '', entregue: 'ok', cancelado: 'bad' };
+VIEWS.store = () => {
+  const u = me(), f = FILTERS.S, cats = [...new Set(S.products.map((p) => p.category).filter(Boolean))].sort();
+  const mine = S.redemptions.filter((r) => r.userId === u.id).slice().reverse(), hist = S.log.filter((l) => l.userId === u.id).slice().reverse().slice(0, 40);
+  app.innerHTML = `<div class="page-head"><h1>Loja de pontos</h1><div class="price">Seu saldo: ${u.points} pontos</div></div>
+    <div class="panel"><div class="row"><label>Buscar<input data-filter="S.q" value="${esc(f.q)}" placeholder="Nome do produto..."></label>${fsel('Categoria', 'S.cat', [['', 'Todas'], ...cats.map((c) => [c, c])], f.cat)}
+      <label class="check" style="align-self:end"><input type="checkbox" data-filter="S.afford" ${f.afford ? 'checked' : ''}> Só os que posso trocar agora</label></div></div>
+    <div class="grid" id="store-grid">${storeGridHTML(u)}</div>
+    <h2 style="margin-top:28px">Minhas trocas</h2><div class="panel table-wrap">${mine.length ? `<table><tr><th>Produto</th><th>Pontos</th><th>Código</th><th>Situação</th><th>Data</th><th></th></tr>
+      ${mine.map((r) => `<tr><td>${esc(r.productName)}</td><td>${r.cost}</td><td><strong>${r.code}</strong></td><td>${tag(r.status, STATUS_TAG[r.status])}${r.note ? `<div class="muted small">${esc(r.note)}</div>` : ''}</td><td>${fmtDate(r.at)}</td><td>${r.status === 'pendente' ? `<button class="btn small danger" data-action="redeem-cancel-mine" data-id="${r.id}">Cancelar</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="muted">Você ainda não fez nenhuma troca.</p>'}</div>
+    <h2>Histórico de pontos</h2><div class="panel table-wrap">${hist.length ? `<table><tr><th>Motivo</th><th>Pontos</th><th>Data</th></tr>${hist.map((h) => `<tr><td>${esc(h.reason)}</td><td>${h.delta > 0 ? '+' : ''}${h.delta}</td><td>${fmtDate(h.at)}</td></tr>`).join('')}</table>` : '<p class="muted">Assista a aulas e faça o check-in para ganhar pontos.</p>'}</div>`;
+};
+// Estorno: devolve os pontos gastos SEM aumentar o XP (nível e ranking não mudam).
+function refund(uid, amt, reason) { const u = user(uid); if (!u) return; u.points += amt; S.log.push({ userId: uid, delta: amt, reason, at: Date.now() }); }
+// Cancela um pedido: devolve pontos e estoque.
+function cancelRedemption(r, note) {
+  if (['entregue', 'cancelado'].includes(r.status)) fail('Este pedido não pode ser cancelado.');
+  r.status = 'cancelado'; r.note = note || ''; refund(r.userId, r.cost, `Estorno: ${r.productName}`);
+  const p = product(r.productId); if (p && !p.unlimited) p.stock++;
+  notify(r.userId, `Sua troca "${r.productName}" foi cancelada e os pontos foram devolvidos.`, '#/store');
+}
+// TROCAR PONTOS POR PRODUTO: confere estoque, saldo e limite; desconta pontos; cria o pedido com código.
+// Para mudar as regras da loja, edite esta ação.
+ACTIONS.redeem = (d) => {
+  const u = me(), p = product(d.id); if (!p || !p.active) fail('Produto indisponível.');
+  if (!p.unlimited && p.stock <= 0) fail('Produto sem estoque.'); if (u.points < p.cost) fail('Pontos insuficientes.');
+  const got = S.redemptions.filter((r) => r.userId === u.id && r.productId === p.id && r.status !== 'cancelado').length; if (p.limit && got >= p.limit) fail('Você atingiu o limite deste produto.');
+  if (!confirm(`Trocar ${p.cost} pontos por "${p.name}"?`)) return;
+  if (!p.unlimited) p.stock--; award(u.id, -p.cost, `Troca: ${p.name}`);
+  const r = { id: nid(), userId: u.id, productId: p.id, productName: p.name, cost: p.cost, status: 'pendente', code: genCode(8), at: Date.now(), note: '' }; S.redemptions.push(r);
+  S.users.filter((x) => x.role === 'admin').forEach((a) => notify(a.id, `🎁 Nova troca: ${p.name} (${u.name})`, '#/admin/redemptions'));
+  checkBadges(u.id); audit(`Troca: ${p.name}`); save(); toast(`Troca realizada! Código: ${r.code}`); renderChrome(); rerender();
+};
+ACTIONS['redeem-cancel-mine'] = (d) => { const r = S.redemptions.find((x) => x.id === Number(d.id) && x.userId === me().id); if (!r || r.status !== 'pendente') fail('Só dá para cancelar pedidos pendentes.'); if (!confirm('Cancelar esta troca e receber os pontos de volta?')) return; cancelRedemption(r, 'Cancelado pelo usuário'); save(); renderChrome(); rerender(); };
+
+// ---------- RANKING ----------
+REFRESH.R = () => rerender();
+VIEWS.ranking = () => {
+  const u = me(), f = FILTERS.R, ms = new Date(); ms.setDate(1); ms.setHours(0, 0, 0, 0);
+  let L = S.users.filter((x) => x.active && !x.pending && x.role === 'aluno' && (!f.dept || x.dept === f.dept));
+  L = L.map((x) => ({ x, score: f.scope === 'mes' ? S.log.filter((l) => l.userId === x.id && l.delta > 0 && l.at >= ms.getTime()).reduce((s, l) => s + l.delta, 0) : x.xp })).sort((a, b) => b.score - a.score);
+  const medal = ['🥇', '🥈', '🥉'];
+  app.innerHTML = `<div class="page-head"><h1>Ranking</h1></div>
+    <div class="panel"><div class="row">${fsel('Período', 'R.scope', [['geral', 'Geral (todo o tempo)'], ['mes', 'Este mês']], f.scope)}${fsel('Departamento', 'R.dept', [['', 'Todos'], ...S.depts.map((d) => [d, d])], f.dept)}</div></div>
+    ${L.length ? `<div class="grid sm" style="margin-bottom:20px">${L.slice(0, 3).map((r, i) => `<div class="stat" style="text-align:center"><div style="font-size:2rem">${medal[i]}</div>${avatar(r.x, 'lg')}<h3 style="margin-top:8px">${esc(r.x.name)}</h3><b>${r.score} XP</b><span>${esc(r.x.dept || '')}</span></div>`).join('')}</div>
+    <div class="panel table-wrap"><table><tr><th>#</th><th>Nome</th><th>Departamento</th><th>Nível</th><th>XP</th></tr>
+      ${L.map((r, i) => `<tr class="${r.x.id === u.id ? 'me' : ''}"><td>${i + 1}</td><td>${avatar(r.x, 'sm')} ${esc(r.x.name)}</td><td>${esc(r.x.dept || '—')}</td><td>${levelInfo(r.x.xp).level}</td><td><strong>${r.score}</strong></td></tr>`).join('')}</table></div>` : '<div class="panel empty">Ainda não há participantes no ranking.</div>'}`;
+};
+
+// ---------- PERFIL (conquistas, certificados e histórico) ----------
+VIEWS.profile = (id) => {
+  const me_ = me(), t = id && isStaff() ? user(id) : me_; if (!t) fail('Usuário não encontrado.');
+  const li = levelInfo(t.xp), st = userStats(t), certs = S.certificates.filter((c) => c.userId === t.id), enr = S.enrollments.filter((e) => e.userId === t.id);
+  const hist = S.log.filter((l) => l.userId === t.id).slice().reverse().slice(0, 30);
+  app.innerHTML = `<div class="panel"><div class="spread"><div class="actions">${avatar(t, 'lg')}<div><h1 style="margin:0">${esc(t.name)}</h1><div class="muted">${esc(t.jobTitle || ROLE[t.role])} · ${esc(t.dept || 'Sem departamento')}</div><div class="muted small">${esc(t.email)}</div></div></div>
+      <div style="min-width:240px"><strong>Nível ${li.level} · ${li.title}</strong><div class="bar gold" style="margin:6px 0"><span style="width:${li.pct}%"></span></div><div class="small muted">${t.xp} XP · saldo ${t.points} pontos · 🔥 ${st.streak} dias</div></div></div></div>
+    <div class="grid sm" style="margin-bottom:20px"><div class="stat"><b>${st.lessons}</b><span>Aulas concluídas</span></div><div class="stat"><b>${st.courses}</b><span>Cursos concluídos</span></div><div class="stat"><b>${enr.length}</b><span>Inscrições</span></div><div class="stat"><b>${st.redeems}</b><span>Trocas</span></div></div>
+    <h2>Conquistas (${t.badges.length}/${BADGES.length})</h2><div class="badges" style="margin-bottom:20px">${BADGES.map((b) => `<div class="badge ${t.badges.includes(b.id) ? '' : 'locked'}"><div class="ic">${b.icon}</div><strong>${b.name}</strong><div class="muted small">${b.desc}</div></div>`).join('')}</div>
+    ${panel(`<h2>Certificados</h2>${certs.length ? certs.map((c) => `<div class="spread" style="padding:6px 0"><span>🎓 ${esc(course(c.courseId)?.title || 'Curso removido')} <span class="muted small">${new Date(c.at).toLocaleDateString('pt-BR')}</span></span><a class="btn small gold" href="#/certificate/${c.code}">Abrir</a></div>`).join('') : '<p class="muted">Nenhum certificado ainda.</p>'}`)}
+    ${panel(`<h2>Últimos pontos</h2>${hist.length ? `<div class="table-wrap"><table>${hist.map((h) => `<tr><td>${esc(h.reason)}</td><td>${h.delta > 0 ? '+' : ''}${h.delta}</td><td>${fmtDate(h.at)}</td></tr>`).join('')}</table></div>` : '<p class="muted">Sem movimentações.</p>'}`)}`;
+};
+
+// ---------- NOTIFICAÇÕES ----------
+VIEWS.notifications = () => {
+  const u = me(), L = S.notifications.filter((n) => n.userId === u.id).slice().reverse().slice(0, 100);
+  app.innerHTML = `<div class="page-head"><h1>Notificações</h1></div>${panel(L.length ? L.map((n) => `<div class="spread" style="padding:9px 0;border-bottom:1px solid var(--line)"><div>${n.read ? '' : '● '}${n.link ? `<a href="${esc(n.link)}">${esc(n.text)}</a>` : esc(n.text)}</div><span class="muted small">${fmtDate(n.at)}</span></div>`).join('') : '<div class="empty">Nada por aqui ainda.</div>')}`;
+  S.notifications.forEach((n) => { if (n.userId === u.id) n.read = true; }); save(); // marca como lidas ao abrir
+};
+
+// ---------- MINHA CONTA ----------
+VIEWS.account = () => {
+  const u = me();
+  app.innerHTML = `<div class="page-head"><h1>Minha conta</h1></div>${u.mustChange ? '<div class="notice">Por segurança, defina uma nova senha para continuar.</div>' : ''}
+    <div class="row">${u.mustChange ? '' : `<section class="panel"><h2>Meus dados</h2><form data-form="profile">${fld('Nome', 'name', u.name, 'required minlength="2"')}${fld('Cargo', 'jobTitle', u.jobTitle)}
+      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']], u.theme)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar</button></form></section>`}
+    <section class="panel"><h2>Alterar senha</h2><form data-form="password"><label>Senha atual<input name="current" type="password" autocomplete="current-password" required></label>
+      <label>Nova senha (8+ caracteres, letras e números)<input name="next" type="password" autocomplete="new-password" required minlength="8"></label><button class="btn" type="submit">Salvar senha</button></form></section></div>`;
+};
+FORMS.profile = async (d) => {
+  const u = me(); if (d.name.trim().length < 2) fail('Informe o nome.');
+  const patch = { name: d.name.trim(), job_title: d.jobTitle.trim(), dept: d.dept, theme: d.theme };
+  if (!LOCAL_MODE) {
+    const { error } = await backend.from('profiles').update(patch).eq('id', sessionAuthId);
+    if (error) fail(error.message);
+  }
+  Object.assign(u, { name: patch.name, jobTitle: patch.job_title, dept: patch.dept, theme: patch.theme });
+  profileSnapshots.set(u.authId, profileSnapshot(u)); save(); applyTheme(); toast('Dados salvos.'); rerender();
+};
+FORMS.password = async (d, form) => {
+  const u = me(); if (!pwOk(d.next)) fail(PW_MSG);
+  if (LOCAL_MODE) {
+    if (!(await verifyLocalPassword(d.current, localPasswords[u.authId]))) fail('A senha atual está incorreta.');
+    localPasswords[u.authId] = await hashLocalPassword(d.next);
+    localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(localPasswords));
+  } else {
+    const { error: verifyError } = await backend.auth.signInWithPassword({ email: u.email, password: d.current });
+    if (verifyError) fail('A senha atual está incorreta.');
+    const { error } = await backend.auth.updateUser({ password: d.next });
+    if (error) fail(error.message);
+  }
+  audit('Senha alterada'); save(); form.reset(); toast('Senha alterada.'); if (location.hash !== '#/home') go('#/home'); else rerender();
+};
+
+// ============================================================================
+// 8. TELAS DE ADMINISTRAÇÃO E GESTÃO
+// Administrador vê todas as abas. Instrutor vê só Painel, Cursos, Relatórios e Avisos.
+// ============================================================================
+const ADMIN_TABS = [['dashboard', 'Painel'], ['users', 'Usuários'], ['groups', 'Grupos e atribuições'], ['courses', 'Cursos'], ['store', 'Produtos da loja'], ['redemptions', 'Trocas'], ['reports', 'Relatórios'], ['announcements', 'Avisos'], ['settings', 'Configurações'], ['data', 'Dados e logs']];
+const STAFF_TABS = ['dashboard', 'courses', 'reports', 'announcements'];
+const AT = {}; // AT[aba] devolve o HTML de cada aba
+
+VIEWS.admin = async (tab, arg) => {
+  need('staff'); tab = tab || 'dashboard';
+  const allowed = isAdmin() ? ADMIN_TABS : ADMIN_TABS.filter((t) => STAFF_TABS.includes(t[0])); if (!allowed.some((t) => t[0] === tab)) tab = 'dashboard';
+  app.innerHTML = `<div class="page-head"><h1>${isAdmin() ? 'Administração' : 'Gestão'}</h1></div><div class="tabs">${allowed.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/admin/${k}">${l}</a>`).join('')}</div><div id="admin-body"></div>`;
+  $('admin-body').innerHTML = await AT[tab](arg);
+  if (tab === 'data') fillStorage();
+};
+const barChart = (items) => { const max = Math.max(1, ...items.map((i) => i.value)); return `<div class="vbars">${items.map((i) => `<div title="${i.value}"><small>${i.value || ''}</small><div class="b" style="height:${(i.value / max) * 78}%"></div><small>${i.label}</small></div>`).join('')}</div>`; };
+
+// ---------- PAINEL ----------
+AT.dashboard = () => {
+  const today = todayISO(), active30 = S.users.filter((u) => u.lastLogin && Date.now() - u.lastLogin < 30 * 864e5).length;
+  const overdue = S.enrollments.filter((e) => { const c = course(e.courseId), d = c && dueOf(e, c); return d && d < today && !courseProg(e.userId, e.courseId).complete; }).length;
+  const given = S.log.filter((l) => l.delta > 0).reduce((s, l) => s + l.delta, 0), pendRed = S.redemptions.filter((r) => r.status === 'pendente').length;
+  const rate = S.enrollments.length ? Math.round((S.certificates.length / S.enrollments.length) * 100) : 0;
+  const days = [...Array(14)].map((_, i) => { const iso = isoOf(new Date(Date.now() - (13 - i) * 864e5)); return { label: iso.slice(8), value: S.progress.filter((p) => isoOf(new Date(p.at)) === iso).length }; });
+  const bars = S.courses.map((c) => { const e = S.enrollments.filter((x) => x.courseId === c.id).length, k = S.certificates.filter((x) => x.courseId === c.id).length; return { c, e, k, pct: e ? Math.round((k / e) * 100) : 0 }; }).sort((a, b) => b.e - a.e).slice(0, 8);
+  const top = S.users.filter((u) => u.role === 'aluno').sort((a, b) => b.xp - a.xp).slice(0, 5);
+  return `<div class="grid sm" style="margin-bottom:20px">
+      <div class="stat"><b>${S.users.length}</b><span>Usuários (${active30} ativos em 30 dias)</span></div><div class="stat"><b>${S.courses.filter((c) => c.status === 'publicado').length}</b><span>Cursos publicados</span></div>
+      <div class="stat"><b>${S.lessons.length}</b><span>Aulas</span></div><div class="stat"><b>${S.enrollments.length}</b><span>Inscrições</span></div>
+      <div class="stat"><b>${rate}%</b><span>Taxa de conclusão</span></div><div class="stat"><b>${overdue}</b><span>Prazos atrasados</span></div>
+      <div class="stat"><b>${given}</b><span>Pontos distribuídos</span></div><div class="stat"><b>${pendRed}</b><span>Trocas pendentes</span></div></div>
+    <div class="row">${panel(`<h2>Aulas concluídas (14 dias)</h2>${barChart(days)}`)}${panel(`<h2>Conclusão por curso</h2>${bars.length ? bars.map((b) => `<div class="hbar"><span title="${esc(b.c.title)}">${esc(b.c.title.slice(0, 26))}</span><div class="bar"><span style="width:${b.pct}%"></span></div><span>${b.pct}%</span></div>`).join('') : '<p class="muted">Sem cursos.</p>'}`)}</div>
+    <div class="row">${panel(`<h2>Top 5 do ranking</h2>${top.length ? top.map((u, i) => `<div class="spread" style="padding:5px 0"><span>${i + 1}. ${esc(u.name)}</span><strong>${u.xp} XP</strong></div>`).join('') : '<p class="muted">Sem alunos.</p>'}`)}
+      ${panel(`<h2>Atividade recente</h2>${S.audit.slice(-8).reverse().map((a) => `<div class="small" style="padding:3px 0"><span class="muted">${fmtDate(a.at)}</span> · ${esc(user(a.userId)?.name || '—')}: ${esc(a.action)}</div>`).join('') || '<p class="muted">Nada ainda.</p>'}`)}</div>`;
+};
+
+// ---------- USUÁRIOS ----------
+function userTableHTML() {
+  const f = FILTERS.U, q = f.q.toLowerCase(); let L = S.users.slice().reverse();
+  if (q) L = L.filter((u) => `${u.name} ${u.email} ${u.jobTitle}`.toLowerCase().includes(q)); if (f.role) L = L.filter((u) => u.role === f.role); if (f.dept) L = L.filter((u) => u.dept === f.dept);
+  if (f.status === 'ativo') L = L.filter((u) => u.active && !u.pending); if (f.status === 'inativo') L = L.filter((u) => !u.active); if (f.status === 'pendente') L = L.filter((u) => u.pending);
+  if (!L.length) return '<p class="muted">Nenhum usuário encontrado.</p>';
+  return `<table><tr><th>Nome</th><th>Perfil</th><th>Depto.</th><th>Nível</th><th>Saldo</th><th>Último acesso</th><th>Situação</th><th>Ações</th></tr>${L.map((u) => `<tr>
+    <td>${avatar(u, 'sm')} <a href="#/profile/${u.id}">${esc(u.name)}</a><div class="muted small">${esc(u.email)}</div></td><td>${ROLE[u.role]}</td><td>${esc(u.dept || '—')}</td><td>${levelInfo(u.xp).level}</td><td>${u.points}</td>
+    <td>${u.lastLogin ? fmtDate(u.lastLogin) : '—'}</td><td>${u.pending ? tag('Aguardando', 'warn') : u.active ? tag('Ativo', 'ok') : tag('Desativado', 'bad')}</td>
+    <td><div class="actions">${u.pending ? `<button class="btn small" data-action="user-approve" data-id="${u.id}">Aprovar</button>` : ''}<button class="btn small ghost" data-action="user-edit" data-id="${u.id}">Editar</button><button class="btn small ghost" data-action="user-points" data-id="${u.id}">Pontos</button>
+    <button class="btn small ghost" data-action="user-pw" data-id="${u.id}">Enviar redefinição</button><button class="btn small ghost" data-action="user-toggle" data-id="${u.id}">${u.active ? 'Desativar' : 'Reativar'}</button></div></td></tr>`).join('')}</table>`;
+}
+REFRESH.U = () => { $('user-table').innerHTML = userTableHTML(); };
+AT.users = () => {
+  const f = FILTERS.U, pend = S.users.filter((u) => u.pending).length;
+  return `${pend ? `<div class="notice">${pend} cadastro(s) aguardando aprovação.</div>` : ''}
+    <div class="panel"><div class="spread"><h2 style="margin:0">Usuários (${S.users.length})</h2><div class="actions"><button class="btn" data-action="user-new">+ Novo usuário</button><button class="btn ghost" data-action="user-import">Importar CSV</button><button class="btn ghost" data-action="export-report" data-kind="users">Exportar CSV</button></div></div>
+    <div class="row" style="margin-top:12px"><label>Buscar<input data-filter="U.q" value="${esc(f.q)}" placeholder="Nome, e-mail, cargo..."></label>${fsel('Perfil', 'U.role', [['', 'Todos'], ...Object.entries(ROLE)], f.role)}${fsel('Departamento', 'U.dept', [['', 'Todos'], ...S.depts.map((d) => [d, d])], f.dept)}${fsel('Situação', 'U.status', [['', 'Todas'], ['ativo', 'Ativos'], ['inativo', 'Desativados'], ['pendente', 'Aguardando aprovação']], f.status)}</div></div>
+    <div class="panel table-wrap" id="user-table">${userTableHTML()}</div>`;
+};
+const userFields = (u) => `${fld('Nome completo', 'name', u.name, 'required minlength="2"')}<p class="muted small">E-mail de login: ${esc(u.email)}. A alteração é feita pelo próprio usuário na autenticação.</p>
+  <div class="row">${sel('Perfil', 'role', Object.entries(ROLE), u.role)}${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${fld('Cargo', 'jobTitle', u.jobTitle)}</div>`;
+ACTIONS['user-new'] = () => {
+  need('admin'); const url = location.href.split('#')[0] + '#/register';
+  openModal('Adicionar usuário', `<p>Envie este endereço para a pessoa criar a própria conta. O acesso começa como aluno; depois você pode ajustar o perfil.</p><label>Link de cadastro<input readonly value="${esc(url)}"></label>`);
+};
+FORMS.newuser = () => fail(LOCAL_MODE ? 'Compartilhe o link de cadastro local com a pessoa.' : 'Contas são criadas pelo formulário de cadastro do Supabase.');
+ACTIONS['user-edit'] = (d) => { need('admin'); const u = user(d.id); openModal('Editar usuário', `<form data-form="edituser" data-id="${u.id}">${userFields(u)}<button class="btn" type="submit">Salvar</button></form>`); };
+FORMS.edituser = async (d, form) => {
+  need('admin'); const u = user(form.dataset.id);
+  if (!u?.authId) fail('Perfil de autenticação não encontrado.');
+  if (d.name.trim().length < 2) fail('Informe o nome.');
+  if (u.id === me().id && d.role !== 'admin') fail('Você não pode remover seu próprio acesso de administrador.');
+  const patch = { name: d.name.trim(), role: d.role, dept: d.dept, job_title: d.jobTitle.trim() };
+  if (!LOCAL_MODE) {
+    const { error } = await backend.from('profiles').update(patch).eq('id', u.authId);
+    if (error) fail(error.message);
+  }
+  Object.assign(u, { name: patch.name, role: patch.role, dept: patch.dept, jobTitle: patch.job_title });
+  profileSnapshots.set(u.authId, profileSnapshot(u)); audit(`Usuário editado: ${u.email}`); save(); closeModal(); rerender();
+};
+ACTIONS['user-points'] = (d) => { need('admin'); const u = user(d.id); openModal(`Pontos de ${u.name}`, `<p>Saldo atual: <strong>${u.points}</strong></p><form data-form="points" data-id="${u.id}">${fld('Pontos (negativo remove)', 'delta', '10', 'type="number" required')}${fld('Motivo', 'reason', 'Ajuste manual', 'required')}<button class="btn" type="submit">Aplicar</button></form>`); };
+FORMS.points = (d, form) => {
+  need('admin'); const u = user(form.dataset.id), delta = Math.trunc(Number(d.delta)); if (!delta) fail('Informe uma quantidade diferente de zero.'); if (u.points + delta < 0) fail('O saldo não pode ficar negativo.');
+  award(u.id, delta, d.reason.trim() || 'Ajuste manual'); notify(u.id, `Seu saldo foi ajustado em ${delta > 0 ? '+' : ''}${delta} pontos: ${d.reason}`, '#/store'); audit(`Pontos ${delta} para ${u.email}`); save(); closeModal(); renderChrome(); rerender();
+};
+ACTIONS['user-pw'] = async (d) => {
+  need('admin'); const u = user(d.id); if (!u?.email) fail('E-mail do usuário não encontrado.');
+  if (LOCAL_MODE) fail('No modo local, peça à pessoa para alterar a senha em Minha conta.');
+  const { error } = await backend.auth.resetPasswordForEmail(u.email, { redirectTo: location.origin + location.pathname + '?recovery=1' });
+  if (error) fail(error.message); toast(`Link de redefinição enviado para ${u.email}.`);
+};
+ACTIONS['user-toggle'] = async (d) => {
+  need('admin'); const u = user(d.id); if (u.id === me().id) fail('Você não pode desativar a própria conta.');
+  const active = !u.active;
+  if (!LOCAL_MODE) {
+    const { error } = await backend.from('profiles').update({ active }).eq('id', u.authId);
+    if (error) fail(error.message);
+  }
+  u.active = active; profileSnapshots.set(u.authId, profileSnapshot(u)); audit(`${u.active ? 'Reativado' : 'Desativado'}: ${u.email}`); save(); rerender();
+};
+ACTIONS['user-approve'] = async (d) => {
+  need('admin'); const u = user(d.id);
+  if (!LOCAL_MODE) {
+    const { error } = await backend.from('profiles').update({ pending: false }).eq('id', u.authId);
+    if (error) fail(error.message);
+  }
+  u.pending = false; profileSnapshots.set(u.authId, profileSnapshot(u)); notify(u.id, 'Seu cadastro foi aprovado. Bem-vindo(a)!', '#/home'); audit(`Aprovado: ${u.email}`); save(); rerender();
+};
+ACTIONS['user-del'] = () => fail('Desative a conta. A exclusão definitiva exige uma função administrativa no servidor.');
+ACTIONS['user-import'] = () => { need('admin'); openModal('Importar usuários', '<p>A importação direta foi desativada. Cada pessoa deve criar a própria conta pelo link de cadastro para autenticar com segurança.</p><button class="btn" data-action="close">Fechar</button>'); };
+FORMS.importusers = () => fail('A importação direta de contas não está disponível.');
+
+// ---------- GRUPOS (departamentos) E ATRIBUIÇÕES ----------
+function assignFormHTML(courseId) {
+  const targets = [['all', 'Todos os usuários ativos'], ...S.depts.map((d) => ['dept:' + d, 'Departamento: ' + d]), ['role:aluno', 'Todos os alunos'], ['role:instrutor', 'Todos os instrutores'], ...S.users.filter((u) => u.active).map((u) => ['user:' + u.id, 'Pessoa: ' + u.name])];
+  return `<form data-form="assign">${sel('Curso ou padrão de serviço', 'courseId', S.courses.map((c) => [c.id, c.title]), courseId)}${sel('Destino', 'target', targets, 'all')}<label>Prazo (opcional)<input type="date" name="dueDate"></label><button class="btn" type="submit">Atribuir e notificar</button></form>`;
+}
+// Inscreve os usuários escolhidos (e define o prazo). Quem já estava inscrito só recebe o novo prazo.
+FORMS.assign = (d) => {
+  need('staff'); const c = course(d.courseId); if (!c) fail('Escolha um curso.');
+  const [kind, val] = d.target.split(':'); let L = S.users.filter((u) => u.active && !u.pending);
+  if (kind === 'dept') L = L.filter((u) => u.dept === val); if (kind === 'role') L = L.filter((u) => u.role === val); if (kind === 'user') L = L.filter((u) => u.id === Number(val));
+  if (!L.length) fail('Nenhum usuário encontrado nesse destino.'); let added = 0;
+  L.forEach((u) => { const e = enrollment(u.id, c.id); if (e) { if (d.dueDate) e.dueDate = d.dueDate; } else { S.enrollments.push({ userId: u.id, courseId: c.id, at: Date.now(), dueDate: d.dueDate || '', by: me().id }); added++; }
+    notify(u.id, `📌 Curso atribuído: ${c.title}${d.dueDate ? ` (prazo ${fmtISO(d.dueDate)})` : ''}`, `#/course/${c.id}`); });
+  audit(`Atribuído "${c.title}" a ${L.length} pessoa(s)`); save(); closeModal(); toast(`${added} nova(s) inscrição(ões); ${L.length} notificada(s).`); rerender();
+};
+ACTIONS['assign-open'] = (d) => { need('staff'); openModal('Atribuir curso', assignFormHTML(d.id)); };
+AT.groups = () => panel(`<h2>Departamentos</h2><form data-form="dept" class="row"><label>Novo departamento<input name="name" required></label><div><button class="btn" type="submit">Adicionar</button></div></form>
+    <div class="table-wrap"><table><tr><th>Departamento</th><th>Pessoas</th><th></th></tr>${S.depts.map((d) => `<tr><td>${esc(d)}</td><td>${S.users.filter((u) => u.dept === d).length}</td><td><button class="btn small danger" data-action="dept-del" data-name="${esc(d)}">Excluir</button></td></tr>`).join('')}</table></div>`)
+  + panel(`<h2>Atribuir curso ou padrão de serviço</h2><p class="muted small">Inscreve pessoas de uma vez, define prazo e envia notificação. Ideal para padrões de serviço obrigatórios.</p>${S.courses.length ? assignFormHTML('') : '<p class="muted">Crie um curso primeiro.</p>'}`);
+FORMS.dept = (d) => { need('admin'); const n = d.name.trim(); if (!n) fail('Informe o nome.'); if (S.depts.includes(n)) fail('Esse departamento já existe.'); S.depts.push(n); save(); rerender(); };
+ACTIONS['dept-del'] = (d) => { need('admin'); if (!confirm(`Excluir o departamento "${d.name}"? As pessoas mantêm o nome dele no cadastro.`)) return; S.depts = S.depts.filter((x) => x !== d.name); save(); rerender(); };
+
+// ---------- CURSOS (criar, editar, publicar, excluir) ----------
+AT.courses = () => `<div class="panel"><div class="spread"><h2 style="margin:0">Cursos e padrões de serviço (${S.courses.length})</h2><button class="btn" data-action="course-new">+ Novo curso</button></div></div>
+  <div class="panel table-wrap">${S.courses.length ? `<table><tr><th>Título</th><th>Tipo</th><th>Status</th><th>Aulas</th><th>Inscritos</th><th>Concluíram</th><th>Nota</th><th>Ações</th></tr>${S.courses.slice().reverse().map((c) => {
+    const r = avgRating(c.id); return `<tr><td><a href="#/course/${c.id}">${esc(c.emoji || '')} ${esc(c.title)}</a>${c.mandatory ? ' ' + tag('Obrigatório', 'bad') : ''}</td><td>${CAT[c.category]}</td><td>${c.status === 'publicado' ? tag('Publicado', 'ok') : tag('Rascunho', 'warn')}</td>
+    <td>${lessonsOf(c.id).length}</td><td>${S.enrollments.filter((e) => e.courseId === c.id).length}</td><td>${S.certificates.filter((x) => x.courseId === c.id).length}</td><td>${r.n ? '★ ' + r.avg.toFixed(1) : '—'}</td>
+    <td><div class="actions"><a class="btn small ghost" href="#/course/${c.id}">Abrir</a><button class="btn small ghost" data-action="course-edit" data-id="${c.id}">Editar</button><button class="btn small ghost" data-action="assign-open" data-id="${c.id}">Atribuir</button>
+    <button class="btn small ghost" data-action="course-publish" data-id="${c.id}">${c.status === 'publicado' ? 'Despublicar' : 'Publicar'}</button>${isAdmin() ? `<button class="btn small danger" data-action="course-del" data-id="${c.id}">Excluir</button>` : ''}</div></td></tr>`; }).join('')}</table>` : '<div class="empty">Nenhum curso ainda. Crie o primeiro!</div>'}</div>`;
+function courseForm(c) {
+  c = c || { title: '', description: '', objectives: '', category: 'curso', area: '', level: 'iniciante', instructor: me().name, status: 'rascunho', mandatory: false, sequential: false, deadline: '', bonus: S.settings.courseBonus, prereq: '', emoji: '📘' };
+  return `<form data-form="course" data-id="${c.id || ''}">${fld('Título', 'title', c.title, 'required minlength="2"')}${area('Descrição', 'description', c.description)}${area('Objetivos (opcional)', 'objectives', c.objectives)}
+    <div class="row">${sel('Tipo', 'category', Object.entries(CAT), c.category)}${fld('Área', 'area', c.area, 'list="areas"')}${sel('Nível', 'level', Object.entries(LEVELS), c.level)}</div>
+    <div class="row">${fld('Instrutor', 'instructor', c.instructor)}${fld('Emoji da capa', 'emoji', c.emoji, 'maxlength="4"')}${sel('Status', 'status', [['rascunho', 'Rascunho (só a equipe vê)'], ['publicado', 'Publicado']], c.status)}</div>
+    <div class="row"><label>Prazo geral (opcional)<input type="date" name="deadline" value="${c.deadline || ''}"></label>${fld('Pontos ao concluir o curso', 'bonus', c.bonus, 'type="number" min="0"')}${sel('Pré-requisito', 'prereq', [['', 'Nenhum'], ...S.courses.filter((x) => x.id !== c.id).map((x) => [x.id, x.title])], c.prereq)}</div>
+    ${chk('Curso obrigatório (aparece como pendência no início)', 'mandatory', c.mandatory)}${chk('Aulas em sequência (libera uma após concluir a anterior)', 'sequential', c.sequential)}
+    <datalist id="areas">${[...new Set(S.courses.map((x) => x.area).filter(Boolean))].map((a) => `<option value="${esc(a)}">`).join('')}</datalist><button class="btn" type="submit">Salvar</button></form>`;
+}
+ACTIONS['course-new'] = () => { need('staff'); openModal('Novo curso', courseForm(), true); };
+ACTIONS['course-edit'] = (d) => { need('staff'); openModal('Editar curso', courseForm(course(d.id)), true); };
+FORMS.course = (d, form) => {
+  need('staff'); if (d.title.trim().length < 2) fail('Informe o título.');
+  const data = { title: d.title.trim(), description: d.description.trim(), objectives: d.objectives.trim(), category: d.category, area: d.area.trim(), level: d.level, instructor: d.instructor.trim(), emoji: d.emoji.trim() || '📘', status: d.status,
+    deadline: d.deadline, bonus: Math.max(0, Math.trunc(Number(d.bonus)) || 0), prereq: d.prereq ? Number(d.prereq) : '', mandatory: d.mandatory === 'on', sequential: d.sequential === 'on' };
+  const id = Number(form.dataset.id);
+  if (id) { Object.assign(course(id), data); audit(`Curso editado: ${data.title}`); save(); closeModal(); rerender(); }
+  else { const nidc = nid(); S.courses.push({ id: nidc, createdAt: Date.now(), materials: [], ...data }); audit(`Curso criado: ${data.title}`); save(); closeModal(); toast('Curso criado! Agora adicione as aulas.'); go('#/course/' + nidc); }
+};
+ACTIONS['course-publish'] = (d) => { need('staff'); const c = course(d.id); if (c.status !== 'publicado' && !lessonsOf(c.id).length && !confirm('Este curso ainda não tem aulas. Publicar mesmo assim?')) return; c.status = c.status === 'publicado' ? 'rascunho' : 'publicado'; audit(`${c.status}: ${c.title}`); save(); rerender(); };
+ACTIONS['course-del'] = async (d) => { need('admin'); const c = course(d.id); if (!confirm(`Excluir "${c.title}", todas as aulas, vídeos, provas, inscrições e certificados? Não dá para desfazer.`)) return; audit(`Curso excluído: ${c.title}`); await purgeCourse(c.id); save(); curCourse = null; go('#/admin/courses'); };
+
+// ---------- AULAS (criar, editar, ordenar, excluir) ----------
+function lessonForm(l, courseId) {
+  l = l || { title: '', module: '', type: 'video', url: '', content: '', filePath: null, duration: 5, points: S.settings.pointsPerLesson };
+  return `<form data-form="lesson" data-id="${l.id || ''}" data-course="${courseId}">${fld('Título da aula', 'title', l.title, 'required minlength="2"')}<div class="row">${fld('Módulo (agrupa as aulas)', 'module', l.module)}${sel('Tipo de conteúdo', 'type', [['video', 'Vídeo — anexar arquivo'], ['link', 'Vídeo — adicionar link'], ['texto', 'Texto']], l.type)}</div>
+    <div class="only-video"><label>Arquivo de vídeo (MP4, WebM, OGG ou MOV)${l.id && (l.filePath || l.fileId) ? ' — deixe vazio para manter o atual' : ''}<input type="file" name="video" accept="video/mp4,video/webm,video/ogg,video/quicktime"></label>
+      ${LOCAL_MODE ? '<p class="muted small">No modo de teste, o arquivo fica armazenado neste navegador (IndexedDB), sem envio ao banco.</p>' : ''}</div>
+    <div class="only-link"><label>Link do vídeo<input name="url" value="${esc(l.url)}" placeholder="Link do YouTube ou URL direta do arquivo de vídeo"></label><p class="muted small">Aceita links do YouTube ou um endereço direto para um vídeo que possa ser reproduzido no navegador.</p></div>
+    <label class="only-texto">Conteúdo (use # título, - lista, **negrito**)<textarea name="content" rows="8">${esc(l.content)}</textarea></label>
+    <div class="row">${fld('Duração (minutos)', 'duration', l.duration, 'type="number" min="0"')}${fld('Pontos ao concluir', 'points', l.points, 'type="number" min="0" required')}</div><button class="btn" type="submit">Salvar aula</button></form>`;
+}
+// Mostra só os campos do tipo de aula escolhido.
+function syncLessonForm(form) { const t = form.type.value; ['video', 'link', 'texto'].forEach((k) => form.querySelectorAll('.only-' + k).forEach((el) => el.classList.toggle('hide', k !== t))); }
+ACTIONS['lesson-new'] = (d) => { need('staff'); openModal('Nova aula', lessonForm(null, d.id), true); syncLessonForm($('modal-body').querySelector('form')); };
+ACTIONS['lesson-edit'] = (d) => { need('staff'); const l = lesson(d.id); openModal('Editar aula', lessonForm(l, l.courseId), true); syncLessonForm($('modal-body').querySelector('form')); };
+FORMS.lesson = async (d, form) => {
+  need('staff'); const cid = Number(form.dataset.course), id = Number(form.dataset.id), old = id ? lesson(id) : null;
+  if (d.title.trim().length < 2) fail('Informe o título da aula.'); const points = Math.trunc(Number(d.points)); if (!(points >= 0)) fail('Pontos inválidos.');
+  const lessonId = id || nid();
+  const rec = { title: d.title.trim(), module: d.module.trim(), type: d.type, points, duration: Math.max(0, Math.trunc(Number(d.duration)) || 0), url: '', content: '', fileId: old?.fileId || null, filePath: old?.filePath || null };
+  if (d.type === 'video') {
+    const f = form.video.files[0]; if (!f && !(old && (old.fileId || old.filePath))) fail('Selecione o arquivo de vídeo.');
+    if (f) {
+      if (!['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'].includes(f.type)) fail('Use um vídeo MP4, WebM, OGG ou MOV.');
+      const filename = f.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '_').slice(-100) || 'video';
+      if (LOCAL_MODE) {
+        rec.filePath = null;
+        rec.fileId = `${cid}/${lessonId}/${Date.now()}`;
+        await idbPut(rec.fileId, f);
+      } else {
+        const filePath = `${cid}/${lessonId}/${Date.now()}-${filename}`;
+        const { error } = await backend.storage.from('course-videos').upload(filePath, f, { contentType: f.type, upsert: false });
+        if (error) fail(error.message);
+        if (old?.filePath) await backend.storage.from('course-videos').remove([old.filePath]);
+        rec.filePath = filePath; rec.fileId = null;
+      }
+      if (old?.fileId) await idbDel(old.fileId);
+      if (!rec.duration) rec.duration = await probeDuration(f);
+    }
+  } else {
+    if (old?.filePath && !LOCAL_MODE) { const { error } = await backend.storage.from('course-videos').remove([old.filePath]); if (error) fail(error.message); rec.filePath = null; }
+    if (old?.fileId) { await idbDel(old.fileId); rec.fileId = null; }
+    if (d.type === 'link') { if (!/^https?:\/\//i.test(d.url.trim())) fail('Informe um endereço começando com http:// ou https://'); rec.url = d.url.trim(); }
+    else { if (!d.content.trim()) fail('Escreva o conteúdo da aula.'); rec.content = d.content; }
+  }
+  if (old) Object.assign(old, rec); else S.lessons.push({ id: lessonId, courseId: cid, position: Math.max(0, ...lessonsOf(cid).map((l) => l.position)) + 1, ...rec });
+  audit(`Aula salva: ${rec.title}`); save(); closeModal(); toast('Aula salva.'); rerender();
+};
+// Sobe/desce a aula trocando as posições.
+function moveLesson(id, dir) { const l = lesson(id), ls = lessonsOf(l.courseId), i = ls.findIndex((x) => x.id === l.id), o = ls[i + dir]; if (!o) return; [l.position, o.position] = [o.position, l.position]; save(); rerender(); }
+ACTIONS['lesson-up'] = (d) => { need('staff'); moveLesson(Number(d.id), -1); };
+ACTIONS['lesson-down'] = (d) => { need('staff'); moveLesson(Number(d.id), 1); };
+ACTIONS['lesson-del'] = async (d) => { need('staff'); const l = lesson(d.id); if (!confirm(`Excluir a aula "${l.title}"?`)) return; if (l.fileId) await idbDel(l.fileId); if (l.filePath && !LOCAL_MODE) { const { error } = await backend.storage.from('course-videos').remove([l.filePath]); if (error) fail(error.message); } S.lessons = S.lessons.filter((x) => x.id !== l.id); S.progress = S.progress.filter((p) => p.lessonId !== l.id); Object.keys(S.watch).forEach((k) => Number(k.split(':')[1]) === l.id && delete S.watch[k]); save(); rerender(); };
+
+// ---------- PROVA (editor em formato de texto) ----------
+ACTIONS['quiz-edit'] = (d) => {
+  need('staff'); const q = quizOf(Number(d.id)) || { passScore: 70, points: S.settings.quizPassBonus, maxAttempts: 3, questions: [] };
+  openModal('Prova do curso', `<p class="muted small">Formato: <code>P: pergunta</code>, depois as alternativas <code>a) texto</code>, <code>b) *texto</code> (o <strong>*</strong> marca a correta) e, opcionalmente, <code>E: explicação</code>. Separe as perguntas com uma linha em branco.</p>
+    <form data-form="quizedit" data-id="${d.id}"><label>Perguntas<textarea name="text" rows="12" required placeholder="P: Quanto é 2+2?&#10;a) 3&#10;b) *4&#10;E: Soma básica.">${esc(quizToText(q.questions))}</textarea></label>
+    <div class="row">${fld('Nota mínima (%)', 'passScore', q.passScore, 'type="number" min="1" max="100" required')}${fld('Pontos na 1ª aprovação', 'points', q.points, 'type="number" min="0"')}${fld('Máx. de tentativas (0 = ilimitado)', 'maxAttempts', q.maxAttempts, 'type="number" min="0"')}</div>
+    <div class="actions"><button class="btn" type="submit">Salvar prova</button>${quizOf(Number(d.id)) ? `<button class="btn danger" type="button" data-action="quiz-del" data-id="${d.id}">Remover prova</button>` : ''}</div></form>`, true);
+};
+FORMS.quizedit = (d, form) => {
+  need('staff'); const cid = Number(form.dataset.id), questions = parseQuiz(d.text);
+  const rec = { courseId: cid, questions, passScore: Math.min(100, Math.max(1, Math.trunc(Number(d.passScore)) || 70)), points: Math.max(0, Math.trunc(Number(d.points)) || 0), maxAttempts: Math.max(0, Math.trunc(Number(d.maxAttempts)) || 0) };
+  const q = quizOf(cid); if (q) Object.assign(q, rec); else S.quizzes.push(rec); audit(`Prova salva: ${course(cid).title}`); save(); closeModal(); toast('Prova salva.'); rerender();
+};
+ACTIONS['quiz-del'] = (d) => { need('staff'); if (!confirm('Remover a prova? As tentativas anteriores também serão apagadas.')) return; const cid = Number(d.id); S.quizzes = S.quizzes.filter((q) => q.courseId !== cid); S.attempts = S.attempts.filter((a) => a.courseId !== cid); S.users.forEach((u) => checkCourseCompletion(u.id, cid)); save(); closeModal(); rerender(); };
+
+// ---------- PRODUTOS DA LOJA (BASE: edite aqui para personalizar) ----------
+AT.store = () => `<div class="panel"><div class="spread"><h2 style="margin:0">Produtos da loja (${S.products.length})</h2><button class="btn" data-action="product-new">+ Novo produto</button></div></div>
+  <div class="panel table-wrap">${S.products.length ? `<table><tr><th>Produto</th><th>Categoria</th><th>Pontos</th><th>Estoque</th><th>Limite</th><th>Situação</th><th>Ações</th></tr>${S.products.slice().reverse().map((p) => `<tr><td>${p.image ? `<img src="${p.image}" alt="" width="28" style="vertical-align:middle;border-radius:4px">` : esc(p.emoji || '🎁')} ${esc(p.name)}</td><td>${esc(p.category || '—')}</td><td>${p.cost}</td><td>${p.unlimited ? '∞' : p.stock}</td><td>${p.limit || '—'}</td><td>${p.active ? tag('Visível', 'ok') : tag('Oculto', 'warn')}</td>
+    <td><div class="actions"><button class="btn small ghost" data-action="product-edit" data-id="${p.id}">Editar</button><button class="btn small ghost" data-action="product-toggle" data-id="${p.id}">${p.active ? 'Ocultar' : 'Mostrar'}</button><button class="btn small danger" data-action="product-del" data-id="${p.id}">Excluir</button></div></td></tr>`).join('')}</table>` : '<div class="empty">Nenhum produto cadastrado.</div>'}</div>`;
+function productForm(p) {
+  p = p || { name: '', description: '', category: '', cost: 100, stock: 10, unlimited: false, limit: 0, emoji: '🎁', image: '', active: true };
+  return `<form data-form="product" data-id="${p.id || ''}">${fld('Nome', 'name', p.name, 'required minlength="2"')}${area('Descrição', 'description', p.description)}
+    <div class="row">${fld('Categoria', 'category', p.category, 'list="pcats"')}${fld('Custo em pontos', 'cost', p.cost, 'type="number" min="1" required')}${fld('Emoji (se não tiver imagem)', 'emoji', p.emoji, 'maxlength="4"')}</div>
+    <div class="row">${fld('Estoque', 'stock', p.stock, 'type="number" min="0"')}${fld('Limite por pessoa (0 = sem limite)', 'limit', p.limit, 'type="number" min="0"')}<label>Imagem (opcional)<input type="file" name="image" accept="image/*"></label></div>
+    ${chk('Estoque ilimitado', 'unlimited', p.unlimited)}${chk('Visível na loja', 'active', p.active)}${p.image ? chk('Remover imagem atual', 'removeImage', false) : ''}
+    <datalist id="pcats">${[...new Set(S.products.map((x) => x.category).filter(Boolean))].map((c) => `<option value="${esc(c)}">`).join('')}</datalist><button class="btn" type="submit">Salvar produto</button></form>`;
+}
+ACTIONS['product-new'] = () => { need('admin'); openModal('Novo produto', productForm()); };
+ACTIONS['product-edit'] = (d) => { need('admin'); openModal('Editar produto', productForm(product(d.id))); };
+FORMS.product = async (d, form) => {
+  need('admin'); const cost = Math.trunc(Number(d.cost)); if (d.name.trim().length < 2) fail('Informe o nome.'); if (!(cost >= 1)) fail('O custo precisa ser de pelo menos 1 ponto.');
+  const id = Number(form.dataset.id), old = id ? product(id) : null, f = form.image.files[0];
+  const rec = { name: d.name.trim(), description: d.description.trim(), category: d.category.trim(), cost, stock: Math.max(0, Math.trunc(Number(d.stock)) || 0), unlimited: d.unlimited === 'on', limit: Math.max(0, Math.trunc(Number(d.limit)) || 0), emoji: d.emoji.trim() || '🎁', active: d.active === 'on', image: old?.image || '' };
+  if (d.removeImage === 'on') rec.image = ''; if (f) rec.image = await imageToDataURL(f);
+  if (old) Object.assign(old, rec); else S.products.push({ id: nid(), ...rec }); audit(`Produto salvo: ${rec.name}`); save(); closeModal(); rerender();
+};
+ACTIONS['product-toggle'] = (d) => { need('admin'); const p = product(d.id); p.active = !p.active; save(); rerender(); };
+ACTIONS['product-del'] = (d) => { need('admin'); const p = product(d.id); if (!confirm(`Excluir "${p.name}"? Os pedidos já feitos continuam no histórico.`)) return; S.products = S.products.filter((x) => x.id !== p.id); save(); rerender(); };
+
+// ---------- TROCAS (pedidos: pendente > aprovado > entregue, ou cancelado) ----------
+AT.redemptions = (st) => {
+  const L = S.redemptions.filter((r) => !st || r.status === st).slice().reverse();
+  const tabs = [['', 'Todas'], ['pendente', 'Pendentes'], ['aprovado', 'Aprovadas'], ['entregue', 'Entregues'], ['cancelado', 'Canceladas']];
+  return `<div class="tabs">${tabs.map(([k, l]) => `<a class="${(st || '') === k ? 'on' : ''}" href="#/admin/redemptions${k ? '/' + k : ''}">${l} (${S.redemptions.filter((r) => !k || r.status === k).length})</a>`).join('')}</div>
+    <div class="panel table-wrap">${L.length ? `<table><tr><th>Pessoa</th><th>Produto</th><th>Pontos</th><th>Código</th><th>Situação</th><th>Data</th><th>Ações</th></tr>${L.map((r) => { const u = user(r.userId); return `<tr><td>${esc(u?.name || 'Removido')}<div class="muted small">${esc(u?.dept || '')}</div></td><td>${esc(r.productName)}</td><td>${r.cost}</td><td><strong>${r.code}</strong></td><td>${tag(r.status, STATUS_TAG[r.status])}${r.note ? `<div class="muted small">${esc(r.note)}</div>` : ''}</td><td>${fmtDate(r.at)}</td>
+      <td><div class="actions">${r.status === 'pendente' ? `<button class="btn small" data-action="red-set" data-id="${r.id}" data-to="aprovado">Aprovar</button>` : ''}${r.status === 'aprovado' ? `<button class="btn small" data-action="red-set" data-id="${r.id}" data-to="entregue">Marcar entregue</button>` : ''}${['pendente', 'aprovado'].includes(r.status) ? `<button class="btn small danger" data-action="red-cancel" data-id="${r.id}">Cancelar e estornar</button>` : ''}</div></td></tr>`; }).join('')}</table>` : '<p class="muted">Nenhum pedido nesta situação.</p>'}</div>`;
+};
+ACTIONS['red-set'] = (d) => { need('admin'); const r = S.redemptions.find((x) => x.id === Number(d.id)); r.status = d.to; notify(r.userId, d.to === 'aprovado' ? `✅ Sua troca "${r.productName}" foi aprovada!` : `📦 Sua troca "${r.productName}" foi entregue!`, '#/store'); audit(`Troca ${r.code}: ${d.to}`); save(); rerender(); };
+ACTIONS['red-cancel'] = (d) => { need('admin'); const note = prompt('Motivo do cancelamento (a pessoa verá):', 'Produto indisponível'); if (note === null) return; cancelRedemption(S.redemptions.find((x) => x.id === Number(d.id)), note); audit('Troca cancelada e estornada'); save(); rerender(); };
+
+// ---------- RELATÓRIOS (tabela na tela e exportação CSV) ----------
+function courseReportRows(cid) {
+  const c = course(cid), q = quizOf(cid), rows = [['Nome', 'Departamento', 'Aulas concluídas', 'Progresso %', 'Melhor nota', 'Concluído em', 'Prazo', 'Situação']];
+  S.enrollments.filter((e) => e.courseId === cid).forEach((e) => { const u = user(e.userId); if (!u) return; const p = courseProg(u.id, cid), cert = certOf(u.id, cid), due = dueOf(e, c), best = S.attempts.filter((a) => a.userId === u.id && a.courseId === cid).reduce((m, a) => Math.max(m, a.score), -1);
+    rows.push([u.name, u.dept || '', `${p.done}/${p.total}`, p.pct, q ? (best >= 0 ? best + '%' : '—') : 'sem prova', cert ? new Date(cert.at).toLocaleDateString('pt-BR') : '', fmtISO(due), p.complete ? 'Concluído' : due && due < todayISO() ? 'Atrasado' : p.done ? 'Em andamento' : 'Não iniciado']); });
+  return rows;
+}
+const tableFromRows = (rows) => `<table><tr>${rows[0].map((h) => `<th>${esc(h)}</th>`).join('')}</tr>${rows.slice(1).map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+REFRESH.X = () => rerender();
+AT.reports = () => {
+  const f = FILTERS.X; if (!f.course && S.courses[0]) f.course = String(S.courses[0].id); const rows = f.course ? courseReportRows(Number(f.course)) : null;
+  return panel(`<h2>Relatório por curso</h2>${S.courses.length ? `<div class="row">${fsel('Curso', 'X.course', S.courses.map((c) => [String(c.id), c.title]), f.course)}<div style="align-self:end"><button class="btn ghost" data-action="export-report" data-kind="course">Exportar CSV</button></div></div>` : ''}
+      <div class="table-wrap">${rows && rows.length > 1 ? tableFromRows(rows) : '<p class="muted">Sem inscritos neste curso.</p>'}</div>`)
+    + panel(`<h2>Outros relatórios (CSV)</h2><div class="actions"><button class="btn ghost" data-action="export-report" data-kind="users">Usuários e desempenho</button><button class="btn ghost" data-action="export-report" data-kind="redemptions">Trocas da loja</button><button class="btn ghost" data-action="export-report" data-kind="points">Histórico de pontos</button></div>`);
+};
+ACTIONS['export-report'] = (d) => {
+  need('staff'); const day = todayISO();
+  if (d.kind === 'course') { if (!FILTERS.X.course) fail('Escolha um curso.'); downloadCSV(`relatorio-curso-${day}.csv`, courseReportRows(Number(FILTERS.X.course))); }
+  else if (d.kind === 'users') downloadCSV(`usuarios-${day}.csv`, [['Nome', 'E-mail', 'Perfil', 'Departamento', 'Inscrições', 'Cursos concluídos', 'Aulas', 'XP', 'Saldo', 'Último acesso'], ...S.users.map((u) => { const st = userStats(u); return [u.name, u.email, ROLE[u.role], u.dept, S.enrollments.filter((e) => e.userId === u.id).length, st.courses, st.lessons, u.xp, u.points, u.lastLogin ? fmtDate(u.lastLogin) : '']; })]);
+  else if (d.kind === 'redemptions') { need('admin'); downloadCSV(`trocas-${day}.csv`, [['Pessoa', 'Produto', 'Pontos', 'Código', 'Situação', 'Data'], ...S.redemptions.map((r) => [user(r.userId)?.name || '', r.productName, r.cost, r.code, r.status, fmtDate(r.at)])]); }
+  else if (d.kind === 'points') { need('admin'); downloadCSV(`pontos-${day}.csv`, [['Pessoa', 'Pontos', 'Motivo', 'Data'], ...S.log.map((l) => [user(l.userId)?.name || '', l.delta, l.reason, fmtDate(l.at)])]); }
+};
+
+// ---------- AVISOS (mural na tela inicial) ----------
+AT.announcements = () => panel(`<h2>Novo aviso</h2><form data-form="announce">${fld('Título', 'title', '', 'required')}${area('Mensagem', 'text', '', 'required')}${chk('Fixar no topo', 'pinned', false)}<button class="btn" type="submit">Publicar aviso</button></form>`)
+  + panel(`<h2>Avisos publicados</h2>${S.announcements.length ? S.announcements.slice().sort((a, b) => (b.pinned - a.pinned) || b.at - a.at).map((n) => `<div class="spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong> <span class="muted small">${fmtDate(n.at)}</span><div>${esc(n.text)}</div></div><button class="btn small danger" data-action="announce-del" data-id="${n.id}">Excluir</button></div>`).join('') : '<p class="muted">Nenhum aviso.</p>'}`);
+FORMS.announce = (d) => { need('staff'); if (!d.title.trim() || !d.text.trim()) fail('Preencha título e mensagem.'); S.announcements.push({ id: nid(), title: d.title.trim(), text: d.text.trim(), at: Date.now(), authorId: me().id, pinned: d.pinned === 'on' }); S.users.filter((u) => u.id !== me().id && u.active).forEach((u) => notify(u.id, `📢 ${d.title.trim()}`, '#/home')); audit(`Aviso: ${d.title}`); save(); toast('Aviso publicado.'); rerender(); };
+ACTIONS['announce-del'] = (d) => { need('staff'); S.announcements = S.announcements.filter((n) => n.id !== Number(d.id)); save(); rerender(); };
+
+// ---------- CONFIGURAÇÕES (regras de pontos, aparência, cadastro) ----------
+AT.settings = () => {
+  const s = S.settings;
+  return panel(`<h2>Configurações da plataforma</h2><form data-form="settings"><div class="row">${fld('Nome da plataforma', 'platformName', s.platformName, 'required')}<label>Cor de destaque<input type="color" name="accent" value="${s.accent}"></label></div>
+    ${chk('Permitir que pessoas se cadastrem sozinhas', 'openSignup', s.openSignup)}${chk('Exigir aprovação do administrador para novos cadastros', 'requireApproval', s.requireApproval)}
+    <h3 style="margin-top:16px">Regras de pontos</h3><div class="row">${fld('Pontos padrão por aula (novas aulas)', 'pointsPerLesson', s.pointsPerLesson, 'type="number" min="0"')}${fld('Bônus padrão ao concluir curso', 'courseBonus', s.courseBonus, 'type="number" min="0"')}${fld('Pontos padrão por aprovação em prova', 'quizPassBonus', s.quizPassBonus, 'type="number" min="0"')}</div>
+    <div class="row">${fld('Pontos do check-in diário', 'dailyBonus', s.dailyBonus, 'type="number" min="0"')}${fld('Bônus a cada 7 dias seguidos', 'streak7Bonus', s.streak7Bonus, 'type="number" min="0"')}${fld('XP por nível (base da curva)', 'levelStep', s.levelStep, 'type="number" min="10"')}${fld('% mínimo assistido para concluir vídeo', 'minWatchPct', s.minWatchPct, 'type="number" min="10" max="100"')}</div>
+    <p class="muted small">Os valores padrão valem para cursos e aulas novos; os já criados mantêm os seus.</p><button class="btn" type="submit">Salvar configurações</button></form>`);
+};
+FORMS.settings = (d) => {
+  need('admin'); const n = (k, min = 0) => Math.max(min, Math.trunc(Number(d[k])) || 0);
+  Object.assign(S.settings, { platformName: d.platformName.trim() || 'Academia Corporativa', accent: /^#[0-9a-f]{6}$/i.test(d.accent) ? d.accent : '#0b6e5f', openSignup: d.openSignup === 'on', requireApproval: d.requireApproval === 'on',
+    pointsPerLesson: n('pointsPerLesson'), courseBonus: n('courseBonus'), quizPassBonus: n('quizPassBonus'), dailyBonus: n('dailyBonus'), streak7Bonus: n('streak7Bonus'), levelStep: n('levelStep', 10) || 100, minWatchPct: Math.min(100, n('minWatchPct', 10)) });
+  audit('Configurações alteradas'); save(); applyTheme(); toast('Configurações salvas.'); rerender();
+};
+
+// ---------- DADOS E LOGS (backup, demonstração, atividades) ----------
+AT.data = () => panel(`<h2>Dados da plataforma</h2><p class="muted">${LOCAL_MODE ? 'Modo de teste local: os dados ficam neste navegador e os arquivos ficam no IndexedDB. Ao limpar os dados do navegador, a demonstração também será apagada.' : 'Contas e dados do curso são sincronizados com o Supabase. Vídeos ficam no Storage privado do projeto. Para restaurar ou apagar dados, use o painel administrativo do Supabase.'}</p>
+  <div class="actions"><button class="btn" data-action="export">Baixar exportação (.json)</button><button class="btn ghost" data-action="seed">Carregar dados de demonstração</button></div>`)
+  + panel(`<h2>Registro de atividades (últimas 100)</h2><div class="table-wrap">${S.audit.length ? `<table><tr><th>Quando</th><th>Quem</th><th>O quê</th></tr>${S.audit.slice(-100).reverse().map((a) => `<tr><td>${fmtDate(a.at)}</td><td>${esc(user(a.userId)?.name || '—')}</td><td>${esc(a.action)}</td></tr>`).join('')}</table>` : '<p class="muted">Sem registros.</p>'}</div>`);
+function fillStorage() { const el = $('storage-info'); if (el) el.textContent = LOCAL_MODE ? 'LocalStorage + IndexedDB' : 'Supabase'; }
+ACTIONS.export = () => { need('admin'); downloadBlob(`backup-${todayISO()}.json`, new Blob([JSON.stringify(S)], { type: 'application/json' })); };
+ACTIONS.reset = () => fail('A exclusão global deve ser feita no painel do Supabase para evitar apagar dados por engano.');
+
+// ============================================================================
+// 9. EVENTOS (o que acontece em cada clique, formulário e digitação)
+// ============================================================================
+// Envio de QUALQUER formulário: o atributo data-form diz qual é e FORMS[nome] trata.
+document.addEventListener('submit', async (e) => {
+  const form = e.target.closest('form[data-form]'); if (!form) return;
+  e.preventDefault(); const fn = FORMS[form.dataset.form]; if (!fn) return;
+  const btn = form.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+  try { await fn(formJSON(form), form); } catch (err) { toast(err.message, true); } finally { if (btn) btn.disabled = false; }
+});
+
+// Clique em QUALQUER elemento com data-action: ACTIONS[nome] trata. Clicar no fundo escuro fecha a janela.
+document.addEventListener('click', async (e) => {
+  if (e.target === $('modal')) { closeModal(); return; }
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  const fn = ACTIONS[el.dataset.action]; if (!fn) return;
+  try { await fn(el.dataset, el, e); } catch (err) { toast(err.message, true); }
+});
+ACTIONS.close = () => closeModal();
+ACTIONS.menu = () => $('topbar').classList.toggle('open');
+
+// Digitação e filtros: atualiza listas na hora (data-filter="Nome.campo"), mostra campos da aula e muda a velocidade do vídeo.
+function onInput(e) {
+  const el = e.target;
+  if (el.dataset && el.dataset.filter) { const [ns, key] = el.dataset.filter.split('.'); FILTERS[ns][key] = el.type === 'checkbox' ? el.checked : el.value; if (REFRESH[ns]) REFRESH[ns](); return; }
+  if (el.name === 'type' && el.form && el.form.dataset.form === 'lesson') syncLessonForm(el.form);
+  if (el.dataset && el.dataset.speed !== undefined) { const v = $('player'); if (v) v.playbackRate = Number(el.value); }
+  if (el.dataset && el.dataset.note) { S.notes[me().id + ':' + el.dataset.note] = el.value; if (e.type === 'change') save(); } // anotações da aula
+}
+document.addEventListener('input', onInput);
+document.addEventListener('change', onInput);
+
+// Erros inesperados aparecem como aviso em vez de falhar em silêncio.
+window.addEventListener('unhandledrejection', (e) => toast(e.reason?.message || 'Algo deu errado.', true));
+window.addEventListener('hashchange', () => { $('topbar').classList.remove('open'); route(true); });
+
+// INÍCIO: ao abrir a página, mostra a tela correta (login, início...).
+route();
+
+</script>
 </body>
 </html>
