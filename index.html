@@ -720,61 +720,19 @@ function checkin(uid) {
   checkBadges(uid); save(); return total;
 }
 
-// Lê o formato interno e variações comuns copiadas de provas com títulos e numeração.
+// Leitura/escrita da prova no formato de texto:  P: pergunta / a) opção / b) *opção correta / E: explicação
 function parseQuiz(text) {
   const qs = []; let cur = null;
-  const lines = text.replace(/\r\n?/g, '\n').split('\n');
-  lines.forEach((raw) => {
-    const markdownHeading = /^#{1,6}\s*/.test(raw.trim());
-    let line = raw.trim().replace(/^>\s*/, '').replace(/^#{1,6}\s*/, '').trim();
-    if (!line) return;
-
-    // Cabeçalhos como "# PROVA: ..." são títulos, não perguntas.
-    if (/^(?:prova|questionário|avaliação(?:\s+final)?)(?:\s*[:—-].*)?$/i.test(line)) return;
-
-    const question = line.match(/^(?:P|Pergunta|Questão)\s*(?:\d+\s*)?[:.)-]\s*(.+)$/i)
-      || line.match(/^\d+[.)-]\s+(.+)$/);
-    if (question) {
-      cur = { q: question[1].trim(), options: [], correct: -1, explain: '', answerLetter: '' };
-      qs.push(cur); return;
-    }
-    if (markdownHeading) return;
-
-    const explanation = line.match(/^(?:E|Explicação)\s*:\s*(.*)$/i);
-    if (explanation && cur) { cur.explain = explanation[1].trim(); return; }
-
-    const answer = line.match(/^(?:resposta correta|gabarito)\s*[:=-]\s*(?:alternativa\s*)?([a-e])\b/i);
-    if (answer && cur) { cur.answerLetter = answer[1].toLowerCase(); return; }
-
-    let optionLine = line.replace(/^[-•]\s*/, '');
-    const marked = optionLine.startsWith('*');
-    if (marked) optionLine = optionLine.slice(1).trim();
-    const option = optionLine.match(/^(?:\(([a-e])\)|([a-e])\s*[).:-])\s*(.*)$/i);
-    if (option && cur) {
-      let value = option[3].trim();
-      let correct = marked || /^(?:\*|\[x\]\s*|✅\s*)/i.test(value);
-      value = value.replace(/^(?:\*\s*|\[x\]\s*|✅\s*)/i, '').replace(/\s*\((?:correta|correto)\)\s*$/i, (match) => {
-        correct = true; return '';
-      }).trim();
-      if (!value) fail(`Alternativa ${option[1] || option[2]} está vazia.`);
-      if (correct && cur.correct >= 0) fail('Marque apenas uma alternativa correta por pergunta.');
-      cur.options.push(value);
-      if (correct) cur.correct = cur.options.length - 1;
-      return;
-    }
-
-    fail(`Linha não reconhecida: "${raw.trim()}"`);
-  });
-  qs.forEach((q) => {
-    if (q.correct < 0 && q.answerLetter) {
-      q.correct = q.answerLetter.charCodeAt(0) - 97;
-    }
-    delete q.answerLetter;
+  text.split('\n').map((l) => l.trim()).filter(Boolean).forEach((l) => {
+    if (/^P:/i.test(l)) { cur = { q: l.slice(2).trim(), options: [], correct: -1, explain: '' }; qs.push(cur); }
+    else if (/^[a-eA-E]\)/.test(l) && cur) { let t = l.slice(2).trim(), ok = false; if (t.startsWith('*')) { ok = true; t = t.slice(1).trim(); } cur.options.push(t); if (ok) cur.correct = cur.options.length - 1; }
+    else if (/^E:/i.test(l) && cur) cur.explain = l.slice(2).trim();
+    else fail(`Linha não reconhecida: "${l}"`);
   });
   qs.forEach((q, i) => {
     if (!q.q) fail(`Pergunta ${i + 1} está vazia.`);
     if (q.options.length < 2) fail(`Pergunta ${i + 1}: use pelo menos 2 alternativas.`);
-    if (q.correct < 0 || q.correct >= q.options.length) fail(`Pergunta ${i + 1}: marque a correta com * ou informe "Resposta correta: B".`);
+    if (q.correct < 0) fail(`Pergunta ${i + 1}: marque a correta com * (ex.: b) *texto).`);
   });
   if (!qs.length) fail('Adicione ao menos uma pergunta.');
   return qs;
@@ -1660,7 +1618,7 @@ ACTIONS['lesson-del'] = async (d) => { need('staff'); const l = lesson(d.id); if
 // ---------- PROVA (editor em formato de texto) ----------
 ACTIONS['quiz-edit'] = (d) => {
   need('staff'); const q = quizOf(Number(d.id)) || { passScore: 70, points: S.settings.quizPassBonus, maxAttempts: 3, questions: [] };
-  openModal('Prova do curso', `<p class="muted small">Aceita títulos (ex.: <code># PROVA: título</code>), perguntas como <code>P:</code>, <code>Pergunta 1:</code> ou <code>1.</code>, alternativas <code>a)</code> a <code>e)</code>, e explicações com <code>E:</code>. Marque a correta com <code>*</code> antes da alternativa ou informe <code>Resposta correta: B</code>.</p>
+  openModal('Prova do curso', `<p class="muted small">Formato: <code>P: pergunta</code>, depois as alternativas <code>a) texto</code>, <code>b) *texto</code> (o <strong>*</strong> marca a correta) e, opcionalmente, <code>E: explicação</code>. Separe as perguntas com uma linha em branco.</p>
     <form data-form="quizedit" data-id="${d.id}"><label>Perguntas<textarea name="text" rows="12" required placeholder="P: Quanto é 2+2?&#10;a) 3&#10;b) *4&#10;E: Soma básica.">${esc(quizToText(q.questions))}</textarea></label>
     <div class="row">${fld('Nota mínima (%)', 'passScore', q.passScore, 'type="number" min="1" max="100" required')}${fld('Pontos na 1ª aprovação', 'points', q.points, 'type="number" min="0"')}${fld('Máx. de tentativas (0 = ilimitado)', 'maxAttempts', q.maxAttempts, 'type="number" min="0"')}</div>
     <div class="actions"><button class="btn" type="submit">Salvar prova</button>${quizOf(Number(d.id)) ? `<button class="btn danger" type="button" data-action="quiz-del" data-id="${d.id}">Remover prova</button>` : ''}</div></form>`, true);
