@@ -1,0 +1,17 @@
+/* ===== BARRA SUPERIOR: marca, menu, pontos, notificações ===== */
+.topbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--top);color:#fff;padding:8px 18px;position:sticky;top:0;z-index:5}
+.brand{font:600 1.05rem var(--font-head);color:#fff;text-decoration:none;margin-right:8px}
+#nav{display:flex;gap:2px;flex-wrap:wrap;flex:1}
+#nav a{color:#dfe8ee;text-decoration:none;padding:6px 12px;border-radius:8px}
+#nav a:hover,#nav a.active{background:rgba(255,255,255,.14);color:#fff}
+#user-area{display:flex;align-items:center;gap:6px}
+.menu-btn{display:none}
+.icon-btn,.link-btn,.menu-btn{position:relative;background:none;border:0;color:#dfe8ee;font:inherit;cursor:pointer;padding:6px 10px;border-radius:8px;text-decoration:none}
+.icon-btn:hover,.link-btn:hover,.menu-btn:hover{background:rgba(255,255,255,.14)}
+.dot{position:absolute;top:0;right:0;background:var(--danger);color:#fff;font-size:.65rem;border-radius:99px;padding:0 5px;min-width:16px;text-align:center}
+.user-link{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;padding:2px 8px;border-radius:8px}
+.user-link:hover{background:rgba(255,255,255,.14)}
+.chip.coins{display:inline-flex;align-items:center;gap:8px;padding:3px 12px 3px 4px;border-radius:999px;background:rgba(245,183,0,.16);color:#ffd966;font:600 .9rem var(--font-head);text-decoration:none}
+.chip.coins::before{content:"";width:22px;height:22px;border-radius:50%;background:var(--coin);box-shadow:inset 0 0 0 4px #ffd966,inset 0 0 0 6px #c99700}
+.avatar{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;color:#fff;font:600 .9rem var(--font-head);flex:none}
+.avatar.sm{width:28px;height:28px;font-size:.7rem}.avatar.lg{width:72px;height:72px;font-size:1.5rem}

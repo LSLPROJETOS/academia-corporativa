@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Academia Corporativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="assets/css/platform/base.css">
+<link rel="stylesheet" href="assets/css/platform/navigation.css">
+<link rel="stylesheet" href="assets/css/platform/components.css">
+<link rel="stylesheet" href="assets/css/platform/pages.css">
+</head>
+<body>
+<!-- BARRA SUPERIOR: marca, menu e área do usuário (preenchidos pelo JavaScript) -->
+<header class="topbar" id="topbar">
+  <a class="brand" id="brand" href="#/home">Academia Corporativa</a>
+  <button class="menu-btn" data-action="menu" aria-label="Abrir menu">☰</button>
+  <nav id="nav" aria-label="Principal"></nav>
+  <div id="user-area"></div>
+</header>
+<!-- ÁREA PRINCIPAL: cada tela é desenhada aqui -->
+<main id="app" class="container" aria-live="polite"></main>
+<!-- JANELA (modal) usada por formulários de criar/editar -->
+<dialog id="modal">
+  <div class="modal-head"><h2 id="modal-title"></h2><button class="icon-btn" data-action="close" aria-label="Fechar">✕</button></div>
+  <div id="modal-body"></div>
+</dialog>
+<!-- AVISO rápido (sucesso/erro) -->
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="assets/js/platform/data.js"></script>
+<script src="assets/js/platform/security.js"></script>
+<script src="assets/js/platform/helpers.js"></script>
+<script src="assets/js/platform/rules.js"></script>
+<script src="assets/js/platform/demo.js"></script>
+<script src="assets/js/platform/navigation.js"></script>
+<script src="assets/js/platform/learner.js"></script>
+<script src="assets/js/platform/admin.js"></script>
+<script src="assets/js/platform/events.js"></script>
+</body>
+</html>
