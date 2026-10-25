@@ -215,9 +215,21 @@ ACTIONS['lesson-del'] = async (d) => { need('staff'); const l = lesson(d.id); if
 ACTIONS['quiz-edit'] = (d) => {
   need('staff'); const q = quizOf(Number(d.id)) || { passScore: 70, points: S.settings.quizPassBonus, maxAttempts: 3, questions: [] };
   openModal('Prova do curso', `<p class="muted small">Formato: <code>P: pergunta</code>, depois as alternativas <code>a) texto</code>, <code>b) *texto</code> (o <strong>*</strong> marca a correta) e, opcionalmente, <code>E: explicação</code>. Separe as perguntas com uma linha em branco.</p>
+    <div class="actions"><button class="btn ghost small" type="button" data-action="quiz-generate" data-id="${d.id}">Gerar sugestões com as aulas de texto</button><span class="muted small">As sugestões entram no editor para você revisar antes de salvar.</span></div>
     <form data-form="quizedit" data-id="${d.id}"><label>Perguntas<textarea name="text" rows="12" required placeholder="P: Quanto é 2+2?&#10;a) 3&#10;b) *4&#10;E: Soma básica.">${esc(quizToText(q.questions))}</textarea></label>
     <div class="row">${fld('Nota mínima (%)', 'passScore', q.passScore, 'type="number" min="1" max="100" required')}${fld('Pontos na 1ª aprovação', 'points', q.points, 'type="number" min="0"')}${fld('Máx. de tentativas (0 = ilimitado)', 'maxAttempts', q.maxAttempts, 'type="number" min="0"')}</div>
     <div class="actions"><button class="btn" type="submit">Salvar prova</button>${quizOf(Number(d.id)) ? `<button class="btn danger" type="button" data-action="quiz-del" data-id="${d.id}">Remover prova</button>` : ''}</div></form>`, true);
+};
+ACTIONS['quiz-generate'] = (d) => {
+  need('staff');
+  const form = $('modal-body').querySelector('form[data-form="quizedit"]');
+  const textarea = form.elements.text;
+  const current = textarea.value.trim();
+  const existing = new Set([...current.matchAll(/^P:\s*(.*)$/gim)].map((match) => match[1].trim().toLocaleLowerCase('pt-BR')));
+  const suggestions = generateQuizSuggestions(Number(d.id)).filter((question) => !existing.has(question.q.toLocaleLowerCase('pt-BR')));
+  if (!suggestions.length) { toast('As sugestões já estão no editor. Revise-as antes de salvar.'); return; }
+  textarea.value = [current, quizToText(suggestions)].filter(Boolean).join('\n\n');
+  toast('Sugestões adicionadas. Revise as perguntas e respostas antes de salvar.');
 };
 FORMS.quizedit = (d, form) => {
   need('staff'); const cid = Number(form.dataset.id), questions = parseQuiz(d.text);

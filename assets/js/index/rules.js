@@ -95,6 +95,68 @@ function parseQuiz(text) {
 }
 const quizToText = (qs) => qs.map((q) => `P: ${q.q}\n${q.options.map((o, i) => `${'abcde'[i]}) ${i === q.correct ? '*' : ''}${o}`).join('\n')}${q.explain ? `\nE: ${q.explain}` : ''}`).join('\n\n');
 
+function generateQuizSuggestions(courseId) {
+  const lessons = lessonsOf(Number(courseId)).filter((lesson) => lesson.type === 'texto' && lesson.content.trim());
+  if (!lessons.length) fail('Este curso não tem aulas de texto com conteúdo para analisar.');
+
+  const stopWords = new Set(('a ainda algo algumas alguns ali ao aos aquela aquelas aquele aqueles aquilo as até com como contra da das de dela delas dele deles depois do dos e ela elas ele eles em entre era essa essas esse esses esta estas este estes eu foi foram há isso isto já lhe lhes mais mas me mesmo meu meus minha minhas muito na não nas nem nenhum nessa nesse nesta neste no nos nossa nossas nosso nossos num numa o os ou outra outras outro outros para pela pelas pelo pelos por porque qual quando quanto que quem se sem ser seu seus sua suas também te tem temos ter teu teus toda todas todo todos tu tua tuas um uma umas uns você vocês').split(' '));
+  const wordPattern = /[A-Za-zÀ-ÿ0-9]+(?:['’][A-Za-zÀ-ÿ0-9]+)*/g;
+  const wordsIn = (text) => text.match(wordPattern) || [];
+  const concepts = [];
+  const sentences = [];
+
+  lessons.forEach((lesson) => {
+    const plain = lesson.content
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/`([^`]+)`/g, '$1');
+    plain.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (/^#{1,6}\s/.test(trimmed)) return;
+      const source = trimmed.replace(/^[-*+]\s*/, '').replace(/^\d+[.)]\s*/, '');
+      if (!source) return;
+      source.split(/[.!?;]+/).forEach((part) => {
+        const text = part.replace(/\*\*/g, '').replace(/__/g, '').replace(/[*_~]/g, '').trim();
+        const words = wordsIn(text);
+        const meaningful = words.filter((word) => word.length >= 4 && !stopWords.has(word.toLocaleLowerCase('pt-BR')));
+        if (meaningful.length < 2) return;
+
+        const emphasized = [...source.matchAll(/\*\*([^*]+)\*\*|__([^_]+)__/g)]
+          .flatMap((match) => wordsIn(match[1] || match[2]))
+          .find((word) => words.includes(word) && word.length >= 4 && !stopWords.has(word.toLocaleLowerCase('pt-BR')));
+        const answer = emphasized || meaningful.slice().sort((a, b) => b.length - a.length)[0];
+        sentences.push({ lesson, text, answer });
+        if (!concepts.some((word) => word.toLocaleLowerCase('pt-BR') === answer.toLocaleLowerCase('pt-BR')))
+          concepts.push(answer);
+        meaningful.forEach((word) => {
+          if (!concepts.some((item) => item.toLocaleLowerCase('pt-BR') === word.toLocaleLowerCase('pt-BR')))
+            concepts.push(word);
+        });
+      });
+    });
+  });
+
+  const candidates = sentences.filter((item, index, all) =>
+    all.findIndex((other) => other.answer.toLocaleLowerCase('pt-BR') === item.answer.toLocaleLowerCase('pt-BR')) === index
+  ).slice(0, 8);
+  const suggestions = candidates.flatMap(({ lesson, text, answer }) => {
+    const distractors = concepts.filter((word) => word.toLocaleLowerCase('pt-BR') !== answer.toLocaleLowerCase('pt-BR')).slice(0, 3);
+    if (distractors.length < 2) return [];
+    const escapedAnswer = answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const question = `Complete conforme a aula "${lesson.title}": ${text.replace(new RegExp(escapedAnswer, 'i'), '_____')}.`;
+    const options = [answer, ...distractors];
+    const seed = [...`${lesson.id}:${answer}`].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const offset = seed % options.length;
+    const rotated = options.slice(offset).concat(options.slice(0, offset));
+    const correct = rotated.findIndex((option) => option === answer);
+    return [{ q: question, options: rotated, correct, explain: `Conteúdo extraído da aula "${lesson.title}".` }];
+  });
+
+  if (!suggestions.length) fail('Não encontrei texto suficiente para sugerir perguntas. Inclua mais conteúdo nas aulas de texto.');
+  return suggestions;
+}
+
 // Tabelas de ações (cliques) e de formulários. São preenchidas nas seções 7, 8 e 9.
 const FORMS = {}, ACTIONS = {}, VIEWS = {};
 // Filtros digitáveis de cada tela (C=cursos, U=usuários, S=loja, R=ranking, X=relatórios) e como atualizar a lista.

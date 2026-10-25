@@ -8,6 +8,8 @@
 
 Os estilos estão divididos em `base`, `navigation`, `components` e `pages`. Os scripts são carregados em ordem e separados em `data`, `security`, `helpers`, `rules`, `demo`, `navigation`, `learner`, `admin` e `events`. Como os scripts são clássicos (não módulos ES), mantenha a ordem das referências no HTML.
 
+No editor da prova, a equipe pode gerar sugestões de múltipla escolha com base no texto das aulas. A geração acontece no navegador, sem serviço externo; revise e salve as perguntas antes de liberá-las. A extração local cria frases de completar com termos do conteúdo, então as alternativas podem precisar de ajustes.
+
 ## Segurança: limites atuais e próximos passos
 
 - HTML, CSS e JavaScript entregues ao navegador podem ser lidos e copiados. Separar arquivos melhora manutenção, mas não protege o código-fonte.
