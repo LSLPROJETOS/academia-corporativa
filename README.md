@@ -2,18 +2,17 @@
 
 ## Organização
 
-As duas páginas existentes foram mantidas porque são versões diferentes da plataforma:
-
 - `index.html` carrega os arquivos em `assets/css/index/` e `assets/js/index/`.
-- `PLATAFORMA.HTML` carrega os arquivos em `assets/css/platform/` e `assets/js/platform/`.
 - `supabase/schema.sql` define o banco, as políticas RLS e o Storage.
 - `supabase/bootstrap-admin.sql` é executado manualmente no Supabase para configurar a primeira conta administrativa.
 
-O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para adicionar a coluna JSONB `profiles.avatar`; o cadastro e a edição do personagem precisam dessa atualização.
+O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para incluir as atualizações do perfil e a função `ranking_xp`, usada para calcular os placares semanal e mensal sem expor o histórico detalhado de pontos. O ranking considera a semana de segunda a domingo e o mês do calendário, atualizando os períodos automaticamente.
 
 Os estilos estão divididos em `base`, `navigation`, `components` e `pages`. Os scripts são carregados em ordem e separados em `data`, `security`, `helpers`, `rules`, `demo`, `navigation`, `learner`, `admin` e `events`. Como os scripts são clássicos (não módulos ES), mantenha a ordem das referências no HTML.
 
-As duas versões não compartilham os módulos porque seus recursos e implementação divergem. Ao corrigir uma delas, avalie se a mesma mudança também é necessária na outra.
+No editor da prova, a equipe pode gerar sugestões de múltipla escolha localmente, sem enviar o conteúdo a um serviço externo. Para evitar alternativas desconexas, o gerador usa estruturas explícitas: etapas identificadas (por exemplo, `ETAPA 1: PLANEJAMENTO`), quantidades destacadas em negrito, siglas com iniciais destacadas (por exemplo, `**O**uvir, **R**econhecer, **A**gir`) e processos em listas numeradas com pelo menos três passos. Se não encontrar uma dessas estruturas, não cria perguntas. Revise as sugestões e salve-as antes de liberá-las.
+
+Cada pessoa pode escolher entre o tema claro e o tema escuro com degradê em **Minha conta**. O degradê existente é mantido como tema padrão.
 
 ## Segurança: limites atuais e próximos passos
 
@@ -26,4 +25,4 @@ As duas versões não compartilham os módulos porque seus recursos e implementa
 
 ## Executar
 
-Abra `index.html` para a entrada principal ou `PLATAFORMA.HTML` para a outra versão. Em produção, sirva os arquivos por HTTPS e mantenha as políticas RLS do Supabase habilitadas.
+Abra `index.html` para acessar a plataforma. Em produção, sirva os arquivos por HTTPS e mantenha as políticas RLS do Supabase habilitadas.

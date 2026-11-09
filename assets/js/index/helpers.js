@@ -12,13 +12,15 @@ const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2
 const todayISO = () => isoOf(new Date());
 const initials = (n) => (n || '?').split(' ').filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
 const hue = (id) => (id * 47) % 360;                                 // cor própria de cada usuário/curso
-const AVATAR_DEFAULT = { skin: 'warm', hair: 'dark', hairStyle: 'short', outfit: 'violet', expression: 'smile', background: 'lavender' };
+const AVATAR_DEFAULT = { skin: 'warm', hair: 'dark', hairStyle: 'wavy', outfit: 'violet', outfitStyle: 'tee', expression: 'smile', accessory: 'none', background: 'lavender' };
 const AVATAR_OPTIONS = {
   skin: [['light', 'Claro', '#f4c9a8'], ['warm', 'Moreno claro', '#d99b72'], ['tan', 'Moreno', '#ae7050'], ['deep', 'Escuro', '#764832']],
   hair: [['dark', 'Castanho escuro', '#342c39'], ['brown', 'Castanho', '#65432f'], ['gold', 'Loiro', '#e3b960'], ['copper', 'Acobreado', '#c95f4c'], ['rose', 'Rosa', '#bd5d87']],
-  hairStyle: [['short', 'Curto', '◠'], ['curly', 'Cacheado', '✿'], ['long', 'Longo', '⌣']],
+  hairStyle: [['short', 'Curto', '◠'], ['curly', 'Cacheado', '✿'], ['long', 'Longo', '⌣'], ['wavy', 'Ondulado', '〰'], ['afro', 'Black power', '✹'], ['bob', 'Bob', '◒']],
   outfit: [['violet', 'Violeta', '#7357d8'], ['ocean', 'Azul', '#3186b8'], ['mint', 'Verde', '#349779'], ['coral', 'Coral', '#e77662'], ['sun', 'Amarelo', '#d4a62f']],
-  expression: [['smile', 'Sorridente', '☺'], ['calm', 'Tranquilo', '◡'], ['wink', 'Confiante', '😉']],
+  outfitStyle: [['tee', 'Camiseta', '◒'], ['hoodie', 'Moletom', '⌂'], ['collar', 'Gola', '◇'], ['sweater', 'Suéter', '≋'], ['jacket', 'Jaqueta', '⌑']],
+  expression: [['smile', 'Sorridente', '☺'], ['calm', 'Tranquilo', '◡'], ['wink', 'Confiante', '😉'], ['joy', 'Animado', '✦'], ['surprise', 'Surpreso', '○'], ['focused', 'Focado', '⌁']],
+  accessory: [['none', 'Sem acessório', '—'], ['round', 'Óculos redondos', '◉'], ['bold', 'Óculos marcantes', '▣'], ['sun', 'Óculos escuros', '◐']],
   background: [['lavender', 'Lavanda', '#e8e1ff'], ['sky', 'Azul céu', '#d9effa'], ['mint', 'Verde claro', '#dcf3e8'], ['peach', 'Pêssego', '#ffeadb'], ['sun', 'Amarelo claro', '#f8efc9']]
 };
 function normalizeAvatar(value) {
@@ -30,31 +32,79 @@ function normalizeAvatar(value) {
 function avatarSVG(value) {
   const v = normalizeAvatar(value);
   const color = (key) => AVATAR_OPTIONS[key].find(([id]) => id === v[key])[2];
-  const hair = {
-    short: '<path d="M37 44c-3-17 7-29 23-29 17 0 27 12 23 30-4-8-11-12-19-13-7 7-16 10-27 12z"/>',
-    curly: '<path d="M33 44c-6-4-5-13 1-16-2-8 5-13 12-12 3-8 13-9 18-3 8-4 16 1 16 9 8 3 10 12 4 18-4-8-11-12-20-13-8 7-18 12-31 17z"/>',
-    long: '<path d="M34 46c-5-21 7-33 26-33 18 0 29 15 24 36l-5 41H40l-5-38z"/>'
+  const hairBack = {
+    short: '<path d="M38 79c-10-37 4-64 36-66 37-3 53 24 39 66l-8 28H42z"/>',
+    curly: '<path d="M41 86c-17-3-20-18-10-29-8-14 2-28 15-29 5-16 23-20 34-9 16-8 33 2 32 18 15 8 17 24 5 35l-6 33H43z"/>',
+    long: '<path d="M40 77c-12-38 5-64 36-65 38-1 51 27 39 69l-4 64H44l-5-42z"/>',
+    wavy: '<path d="M40 76c-12-39 6-64 37-64 36 0 51 27 37 68 10 16 5 30-7 38l-1 27H45l-1-31c-12-9-13-24-3-38z"/>',
+    afro: '<path d="M42 89c-18-8-20-31-7-43-4-19 10-34 27-32 13-13 34-9 40 6 19 1 31 20 21 37 11 15 5 32-8 39l-2 48H46z"/>',
+    bob: '<path d="M40 76c-12-39 6-64 37-64 36 0 51 26 38 69l-4 44H44z"/>'
   }[v.hairStyle];
   const curls = v.hairStyle === 'curly'
-    ? '<g><circle cx="37" cy="30" r="7"/><circle cx="47" cy="20" r="7"/><circle cx="61" cy="18" r="8"/><circle cx="74" cy="26" r="7"/></g>'
+    ? '<g><circle cx="43" cy="43" r="10"/><circle cx="56" cy="28" r="11"/><circle cx="74" cy="23" r="12"/><circle cx="93" cy="31" r="11"/><circle cx="104" cy="47" r="9"/></g>'
     : '';
-  const eyes = v.expression === 'wink'
-    ? '<path d="M47 48h7"/><circle cx="69" cy="48" r="2.5" fill="#352a2a" stroke="none"/>'
-    : '<circle cx="49" cy="48" r="2.5" fill="#352a2a" stroke="none"/><circle cx="69" cy="48" r="2.5" fill="#352a2a" stroke="none"/>';
-  const mouth = v.expression === 'calm' ? 'M53 60q6 4 12 0' : 'M51 58q8 11 16 0';
-  return `<svg viewBox="0 0 120 140" role="img" aria-label="Personagem personalizado" xmlns="http://www.w3.org/2000/svg">
-    <rect width="120" height="140" rx="60" fill="${color('background')}"/>
-    <circle cx="60" cy="64" r="51" fill="white" opacity=".28"/>
-    <path d="M39 106 34 134h18l8-21 8 21h18l-5-28" fill="#f3f1f5"/>
-    <path d="M43 101h34l8 34H35z" fill="${color('outfit')}"/>
-    <path d="M42 105 27 119M78 105l15 14" fill="none" stroke="${color('skin')}" stroke-width="9" stroke-linecap="round"/>
-    <path d="M51 77h18v17H51z" fill="${color('skin')}"/>
-    <ellipse cx="60" cy="47" rx="25" ry="29" fill="${color('skin')}"/>
-    <g fill="${color('hair')}" stroke="${color('hair')}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${hair}${curls}</g>
-    ${v.hairStyle === 'long' ? `<path d="M36 40q-3 22 3 43M83 40q4 21-1 43" fill="none" stroke="${color('hair')}" stroke-width="9" stroke-linecap="round"/>` : ''}
-    <g fill="none" stroke="#352a2a" stroke-width="2.5" stroke-linecap="round">${eyes}</g>
-    <path d="${mouth}" fill="none" stroke="#99554f" stroke-width="2.5" stroke-linecap="round"/>
-    <circle cx="40" cy="57" r="3" fill="#ef8f85" opacity=".6"/><circle cx="80" cy="57" r="3" fill="#ef8f85" opacity=".6"/>
+  const frontHair = {
+    short: '<path d="M40 67c0-34 14-51 36-51 26 0 39 21 32 47-8-9-17-15-28-16-10 11-22 17-40 20z"/>',
+    curly: '<path d="M40 66c-9-9-4-22 7-28 6-14 22-17 32-8 13-5 24 4 23 17 10 8 10 18 1 25-8-11-17-16-27-16-11 11-22 15-36 10z"/>',
+    long: '<path d="M41 67c-3-35 11-52 36-52 27 0 40 22 33 50-8-12-18-18-29-19-11 13-24 19-40 21z"/>',
+    wavy: '<path d="M40 67c-4-34 10-51 36-51 27 0 40 22 33 49-7-7-13-11-20-12 7 12 4 22-5 29 0-13-5-21-13-26-9 12-19 18-31 20z"/>',
+    afro: '<path d="M40 69c-12-9-10-24 1-31-1-14 11-23 23-19 12-11 29-5 31 8 13 2 20 14 12 25 4 7 2 14-3 19-8-12-18-18-30-18-10 11-21 16-34 16z"/>',
+    bob: '<path d="M40 66c-3-34 11-51 37-51 27 0 40 22 33 51-3 15-10 25-17 31V67c-16 2-29-4-41-14l-2 46c-8-9-13-20-10-33z"/>'
+  }[v.hairStyle];
+  const eyes = {
+    smile: '<path d="M50 74q7-3 13 0M83 74q7-3 13 0"/><ellipse cx="57" cy="83" rx="6" ry="7" fill="#fff" stroke="none"/><ellipse cx="89" cy="83" rx="6" ry="7" fill="#fff" stroke="none"/><circle cx="58" cy="84" r="2.8" fill="#493b4b" stroke="none"/><circle cx="90" cy="84" r="2.8" fill="#493b4b" stroke="none"/><circle cx="59" cy="83" r="1" fill="#fff" stroke="none"/><circle cx="91" cy="83" r="1" fill="#fff" stroke="none"/>',
+    calm: '<path d="M50 75q7-3 13 0M83 75q7-3 13 0M51 84q6-3 12 0M83 84q6-3 12 0"/>',
+    wink: '<path d="M50 74q7-3 13 0M83 74q7-3 13 0"/><ellipse cx="57" cy="83" rx="6" ry="7" fill="#fff" stroke="none"/><circle cx="58" cy="84" r="2.8" fill="#493b4b" stroke="none"/><path d="M83 84q6-4 12 0"/>',
+    joy: '<path d="M50 75q7-4 13 0M83 75q7-4 13 0M51 84q6-5 12 0M84 84q6-5 12 0"/>',
+    surprise: '<path d="M50 72q7-4 13-1M83 71q7-3 13 0"/><ellipse cx="57" cy="83" rx="6.5" ry="8" fill="#fff" stroke="none"/><ellipse cx="89" cy="83" rx="6.5" ry="8" fill="#fff" stroke="none"/><circle cx="58" cy="84" r="2.8" fill="#493b4b" stroke="none"/><circle cx="90" cy="84" r="2.8" fill="#493b4b" stroke="none"/>',
+    focused: '<path d="m50 74 13 2M96 74l-13 2"/><ellipse cx="57" cy="83" rx="6" ry="6.5" fill="#fff" stroke="none"/><ellipse cx="89" cy="83" rx="6" ry="6.5" fill="#fff" stroke="none"/><circle cx="59" cy="84" r="2.7" fill="#493b4b" stroke="none"/><circle cx="87" cy="84" r="2.7" fill="#493b4b" stroke="none"/>'
+  }[v.expression];
+  const mouth = {
+    smile: '<path d="M66 104q7 6 14 0"/>',
+    calm: '<path d="M67 105h12"/>',
+    wink: '<path d="M65 103q8 8 17-1"/>',
+    joy: '<path d="M65 103q8 11 16 0"/>',
+    surprise: '<ellipse cx="73" cy="105" rx="3" ry="3.5"/>',
+    focused: '<path d="M67 105q6-2 12 0"/>'
+  }[v.expression];
+  const glasses = {
+    none: '',
+    round: '<g fill="none" stroke="#493b4b" stroke-width="3"><circle cx="57" cy="82" r="11"/><circle cx="87" cy="82" r="11"/><path d="M68 81q4-3 8 0M46 80l-6-3M98 80l6-3"/></g>',
+    bold: '<g fill="rgba(255,255,255,.16)" stroke="#493b4b" stroke-width="5"><rect x="44" y="72" width="27" height="21" rx="8"/><rect x="76" y="72" width="27" height="21" rx="8"/><path d="M71 80h6M44 79l-6-3M103 79l6-3"/></g>',
+    sun: '<g fill="#3e3948" stroke="#3e3948" stroke-width="4"><path d="M44 74h27l-2 14q-2 7-11 7t-12-7z"/><path d="M76 74h27l-2 14q-2 7-11 7t-12-7z"/><path d="M71 79h6M44 78l-6-3M103 78l6-3"/></g>'
+  }[v.accessory];
+  const clothing = {
+    tee: `<path d="M28 178c3-29 17-40 38-44l7 12 7-12c21 4 35 15 38 44z" fill="${color('outfit')}"/><path d="m64 136 9 10 9-10" fill="none" stroke="rgba(255,255,255,.82)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`,
+    hoodie: `<path d="M51 142q-2-15 9-22h26q11 7 9 22c18 6 29 17 32 36H28c3-19 14-30 23-36z" fill="${color('outfit')}"/><path d="M58 123q15 19 30 0M73 144v34M59 139l8 9M87 139l-8 9" fill="none" stroke="rgba(255,255,255,.72)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`,
+    collar: `<path d="M28 178c3-29 17-40 38-44l7 12 7-12c21 4 35 15 38 44z" fill="${color('outfit')}"/><path d="m58 135 15 15 15-15-7-4-8 8-8-8z" fill="#fff"/><path d="m73 150-5 8 5 13 5-13z" fill="#e36b63"/>`,
+    sweater: `<path d="M28 178c3-29 17-40 38-44l7 12 7-12c21 4 35 15 38 44z" fill="${color('outfit')}"/><path d="m64 136 9 10 9-10M31 162h84M29 169h88" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="3" stroke-linecap="round"/>`,
+    jacket: `<path d="M28 178c3-29 17-40 38-44l7 12 7-12c21 4 35 15 38 44z" fill="${color('outfit')}"/><path d="m58 135 15 17 15-17-8-4-7 9-7-9zM73 152v26" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><circle cx="80" cy="161" r="1.7" fill="#fff"/><circle cx="80" cy="170" r="1.7" fill="#fff"/>`
+  }[v.outfitStyle];
+  const neckShadow = '<path d="M63 121h20v19q-10 8-20 0z" fill="rgba(101,58,50,.12)"/>';
+  const hairStrands = v.hairStyle === 'curly'
+    ? '<g fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2"><path d="M48 38q6-10 12-6M69 27q7-6 13-1M91 39q6-1 8 5"/></g>'
+    : v.hairStyle === 'afro'
+      ? '<g fill="none" stroke="rgba(255,255,255,.16)" stroke-width="2"><path d="M49 34q5-7 10-4M70 25q6-5 11 0M91 34q6-3 9 3"/></g>'
+      : '<path d="M52 34q12-9 24-7" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="3" stroke-linecap="round"/>';
+  return `<svg viewBox="0 0 146 178" role="img" aria-label="Personagem personalizado" xmlns="http://www.w3.org/2000/svg">
+    <rect width="146" height="178" rx="28" fill="${color('background')}"/>
+    <path d="M0 151q35-25 73-16 39-9 73 16v27H0z" fill="#fff" opacity=".16"/>
+    ${clothing}
+    ${hairBack.replace('<path ', `<path fill="${color('hair')}" `)}
+    <path d="M39 79c-8-4-13 2-11 10 1 7 6 11 13 10M107 79c8-4 13 2 11 10-1 7-6 11-13 10" fill="${color('skin')}"/>
+    <path d="M42 85q-8 5-2 10M104 85q8 5 2 10" fill="none" stroke="rgba(123,69,55,.35)" stroke-width="2" stroke-linecap="round"/>
+    <path d="M63 116h20v27q-10 8-20 0z" fill="${color('skin')}"/>
+    ${neckShadow}
+    <ellipse cx="73" cy="82" rx="34" ry="42" fill="${color('skin')}"/>
+    <ellipse cx="61" cy="91" rx="15" ry="20" fill="#fff" opacity=".055"/>
+    ${frontHair.replace('<path ', `<path fill="${color('hair')}" `)}
+    ${hairStrands}
+    <g fill="none" stroke="#66545a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${eyes}</g>
+    ${glasses}
+    <path d="M73 87q-2 5 1 7" fill="none" stroke="#a86857" stroke-width="1.8" stroke-linecap="round" opacity=".75"/>
+    <g fill="none" stroke="#a34f58" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${mouth}</g>
+    <ellipse cx="48" cy="101" rx="6" ry="3" fill="#ef8f85" opacity=".24"/><ellipse cx="98" cy="101" rx="6" ry="3" fill="#ef8f85" opacity=".24"/>
+    <circle cx="30" cy="34" r="3" fill="#fff" opacity=".9"/><path d="M116 36v9m-4-4h8" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>
   </svg>`;
 }
 function avatar(u, size = '') {
@@ -62,12 +112,14 @@ function avatar(u, size = '') {
 }
 function avatarBuilderHTML(value = AVATAR_DEFAULT) {
   const config = normalizeAvatar(value);
-  const group = (key, title, type = 'swatches') => `<fieldset class="avatar-choice-group"><legend>${title}</legend><div class="avatar-choices ${type}">${AVATAR_OPTIONS[key].map(([id, label, swatch]) => {
+  const group = (key, title, type = 'swatches') => `<fieldset class="avatar-choice-group avatar-group-${key}"><legend>${title}</legend><div class="avatar-choices ${type}">${AVATAR_OPTIONS[key].map(([id, label, swatch]) => {
     const active = config[key] === id;
-    return `<button type="button" class="avatar-choice ${type === 'swatches' ? 'avatar-swatch' : 'avatar-symbol'} ${active ? 'selected' : ''}" data-action="avatar-pick" data-key="${key}" data-value="${id}" aria-label="${label}" aria-pressed="${active}" ${type === 'swatches' ? `style="--choice-color:${swatch}"` : ''}>${type === 'swatches' ? '' : swatch}<span>${label}</span></button>`;
+    const sample = type === 'samples';
+    const preview = sample ? `<span class="avatar-option-art">${avatarSVG({ ...config, [key]: id })}</span>` : '';
+    return `<button type="button" class="avatar-choice ${sample ? 'avatar-sample' : 'avatar-swatch'} ${active ? 'selected' : ''}" data-action="avatar-pick" data-key="${key}" data-value="${id}" aria-label="${label}" aria-pressed="${active}" ${sample ? '' : `style="--choice-color:${swatch}" title="${label}"`}>${sample ? `${preview}<span class="avatar-sample-label">${label}</span>` : '<span class="avatar-swatch-label">' + label + '</span>'}</button>`;
   }).join('')}</div></fieldset>`;
-  return `<section class="avatar-builder"><div class="avatar-preview"><div class="avatar-preview-art">${avatarSVG(config)}</div><strong>Seu personagem</strong><span>Uma pequena versão de você</span></div><div class="avatar-builder-options">
-    ${group('hairStyle', 'Cabelo', 'symbols')}${group('expression', 'Expressão', 'symbols')}${group('skin', 'Tom de pele')}${group('hair', 'Cor do cabelo')}${group('outfit', 'Sua roupa')}${group('background', 'Fundo')}
+  return `<section class="avatar-builder"><div class="avatar-preview"><div class="avatar-preview-art">${avatarSVG(config)}</div><span class="avatar-preview-kicker">SUA PRÓXIMA VERSÃO</span><strong>Seu personagem</strong><span>Uma versão com a sua cara.</span><button type="button" class="avatar-randomize" data-action="avatar-randomize">✦ Sortear visual</button></div><div class="avatar-builder-options">
+    ${group('hairStyle', 'Penteado', 'samples')}${group('expression', 'Expressão', 'samples')}${group('accessory', 'Acessórios', 'samples')}${group('outfitStyle', 'Modelo da roupa', 'samples')}${group('skin', 'Tom de pele')}${group('hair', 'Cor do cabelo')}${group('outfit', 'Cor da roupa')}${group('background', 'Fundo')}
     </div>${Object.entries(config).map(([key, val]) => `<input type="hidden" name="avatar_${key}" value="${val}">`).join('')}</section>`;
 }
 function avatarFromForm(form) {

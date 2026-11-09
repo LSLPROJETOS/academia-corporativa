@@ -5,10 +5,9 @@ const app = $('app'), nav = $('nav');
 let mediaUrl = null;
 function stopMedia() { if (mediaUrl?.startsWith('blob:')) URL.revokeObjectURL(mediaUrl); mediaUrl = null; }
 
-// Aplica tema claro/escuro, cor de destaque e nome da plataforma.
+// Aplica tema, cor de destaque e nome da plataforma.
 function applyTheme() {
-  const t = me()?.theme || 'light';
-  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = me()?.theme === 'light' ? 'light' : 'dark';
   const accent = (S.settings.accent || '').toLowerCase();
   document.documentElement.style.setProperty('--brand', accent === '#0b6e5f' ? '#7057f5' : (S.settings.accent || '#7057f5'));
   $('brand').textContent = S.settings.platformName; document.title = S.settings.platformName;
@@ -126,7 +125,7 @@ FORMS.register = async (d) => {
     const email = d.email.trim().toLowerCase();
     if (S.users.some((u) => u.email.toLowerCase() === email)) fail('Já existe uma conta com este e-mail.');
     const u = { id: nid(), authId: `local-${nid()}`, name: d.name.trim(), email, role: 'aluno', dept: d.dept || '',
-      jobTitle: '', active: true, pending: !!S.settings.requireApproval, points: 0, xp: 0, badges: [], theme: 'light', avatar,
+      jobTitle: '', active: true, pending: !!S.settings.requireApproval, points: 0, xp: 0, badges: [], theme: 'dark', avatar,
       createdAt: Date.now(), lastLogin: null, streak: 0, lastCheckin: null, fails: 0, lockUntil: 0, mustChange: false };
     S.users.push(u); localPasswords[u.authId] = await hashLocalPassword(d.password);
     localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(localPasswords)); save();

@@ -110,7 +110,7 @@ function profileFromRow(row) {
     id: Number(row.internal_id), authId: row.id || row.profile_id, name: row.name || '', email: row.email || '',
     role: row.role || 'aluno', dept: row.dept || '', jobTitle: row.job_title || '', active: row.active !== false,
     pending: !!row.pending, points: Number(row.points) || 0, xp: Number(row.xp) || 0,
-    badges: row.badges || [], theme: row.theme || 'light', avatar: row.avatar && Object.keys(row.avatar).length ? normalizeAvatar(row.avatar) : null,
+    badges: row.badges || [], theme: row.theme === 'light' ? 'light' : 'dark', avatar: row.avatar && Object.keys(row.avatar).length ? normalizeAvatar(row.avatar) : null,
     createdAt: Date.parse(row.created_at) || Date.now(),
     lastLogin: row.last_login ? Date.parse(row.last_login) : null, streak: Number(row.streak) || 0,
     lastCheckin: row.last_checkin || null, fails: 0, lockUntil: 0, mustChange: false
@@ -253,7 +253,7 @@ async function syncProfiles() {
     const previous = profileSnapshots.get(profile.authId);
     if (previous === snapshot) continue;
     const patch = {
-      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme || 'light', avatar: profile.avatar || {},
+      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme === 'light' ? 'light' : 'dark', avatar: profile.avatar || {},
       points: Number(profile.points) || 0, xp: Number(profile.xp) || 0, badges: profile.badges || [],
       streak: Number(profile.streak) || 0, last_checkin: profile.lastCheckin || null
     };
@@ -293,7 +293,7 @@ function initializeBackend() {
       let admin = S.users.find((u) => u.email === 'admin@local.test');
       if (!admin) {
         admin = { id: nid(), authId: 'local-admin', name: 'Administrador de demonstração', email: 'admin@local.test', role: 'admin',
-          dept: '', jobTitle: '', active: true, pending: false, points: 0, xp: 0, badges: [], theme: 'light',
+          dept: '', jobTitle: '', active: true, pending: false, points: 0, xp: 0, badges: [], theme: 'dark',
           createdAt: Date.now(), lastLogin: null, streak: 0, lastCheckin: null, fails: 0, lockUntil: 0, mustChange: false };
         S.users.push(admin);
       }

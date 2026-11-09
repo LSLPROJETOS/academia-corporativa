@@ -41,7 +41,7 @@ AT.dashboard = () => {
     <div class="section-heading dashboard-section-heading"><div><span class="eyebrow">UM OLHAR GERAL</span><h2>Sua academia em números</h2></div><span class="muted small">Atualizado agora</span></div>
     <div class="grid admin-stats">${metrics.map(([icon, value, label, detail, tone]) => `<article class="stat admin-stat tone-${tone}"><span class="stat-icon" aria-hidden="true">${icon}</span><b>${value}</b><span class="stat-label">${label}</span><small>${detail}</small></article>`).join('')}</div>
     <div class="row dashboard-charts">${panel(`<div class="panel-heading"><div><span class="eyebrow">RITMO DE APRENDIZADO</span><h2>Aulas concluídas</h2></div><span class="chart-period">ÚLTIMOS 14 DIAS</span></div>${barChart(days)}`)}${panel(`<div class="panel-heading"><div><span class="eyebrow">PROGRESSO</span><h2>Conclusão por curso</h2></div></div>${bars.length ? bars.map((b) => `<div class="hbar"><span title="${esc(b.c.title)}">${esc(b.c.title.slice(0, 26))}</span><div class="bar"><span style="width:${b.pct}%"></span></div><span>${b.pct}%</span></div>`).join('') : '<p class="muted">Sem cursos.</p>'}`)}</div>
-    <div class="row dashboard-lower">${panel(`<div class="panel-heading"><div><span class="eyebrow">GENTE QUE INSPIRA</span><h2>Top 5 do ranking</h2></div><a class="dashboard-link" href="#/ranking">Ver ranking ↗</a></div>${top.length ? top.map((u, i) => `<div class="spread ranking-row"><span><i>${String(i + 1).padStart(2, '0')}</i>${esc(u.name)}</span><strong>${u.xp} XP</strong></div>`).join('') : '<p class="muted">Sem alunos.</p>'}`)}
+    <div class="row dashboard-lower">${panel(`<div class="panel-heading"><div><span class="eyebrow">GENTE QUE INSPIRA</span><h2>Top 5 histórico</h2></div><a class="dashboard-link" href="#/ranking">Ver ranking ↗</a></div>${top.length ? top.map((u, i) => `<div class="spread ranking-row"><span><i>${String(i + 1).padStart(2, '0')}</i>${esc(u.name)}</span><strong>${u.xp} XP</strong></div>`).join('') : '<p class="muted">Sem alunos.</p>'}`)}
       ${panel(`<div class="panel-heading"><div><span class="eyebrow">O QUE ESTÁ ACONTECENDO</span><h2>Atividade recente</h2></div></div>${S.audit.slice(-8).reverse().map((a) => `<div class="activity-row"><span class="muted small">${fmtDate(a.at)}</span><span><strong>${esc(user(a.userId)?.name || '—')}</strong> · ${esc(a.action)}</span></div>`).join('') || '<p class="muted">Nada ainda.</p>'}`)}</div>`;
 };
 
@@ -226,9 +226,21 @@ ACTIONS['lesson-del'] = async (d) => { need('staff'); const l = lesson(d.id); if
 ACTIONS['quiz-edit'] = (d) => {
   need('staff'); const q = quizOf(Number(d.id)) || { passScore: 70, points: S.settings.quizPassBonus, maxAttempts: 3, questions: [] };
   openModal('Prova do curso', `<p class="muted small">Formato: <code>P: pergunta</code>, depois as alternativas <code>a) texto</code>, <code>b) *texto</code> (o <strong>*</strong> marca a correta) e, opcionalmente, <code>E: explicação</code>. Separe as perguntas com uma linha em branco.</p>
+    <div class="actions"><button class="btn ghost small" type="button" data-action="quiz-generate" data-id="${d.id}">Gerar sugestões locais</button><span class="muted small">A geração usa etapas numeradas, quantidades em negrito, siglas destacadas e listas numeradas; não inventa alternativas com palavras aleatórias. Revise antes de salvar.</span></div>
     <form data-form="quizedit" data-id="${d.id}"><label>Perguntas<textarea name="text" rows="12" required placeholder="P: Quanto é 2+2?&#10;a) 3&#10;b) *4&#10;E: Soma básica.">${esc(quizToText(q.questions))}</textarea></label>
     <div class="row">${fld('Nota mínima (%)', 'passScore', q.passScore, 'type="number" min="1" max="100" required')}${fld('Pontos na 1ª aprovação', 'points', q.points, 'type="number" min="0"')}${fld('Máx. de tentativas (0 = ilimitado)', 'maxAttempts', q.maxAttempts, 'type="number" min="0"')}</div>
     <div class="actions"><button class="btn" type="submit">Salvar prova</button>${quizOf(Number(d.id)) ? `<button class="btn danger" type="button" data-action="quiz-del" data-id="${d.id}">Remover prova</button>` : ''}</div></form>`, true);
+};
+ACTIONS['quiz-generate'] = (d) => {
+  need('staff');
+  const form = $('modal-body').querySelector('form[data-form="quizedit"]');
+  const textarea = form.elements.text;
+  const current = textarea.value.trim();
+  const existing = new Set([...current.matchAll(/^P:\s*(.*)$/gim)].map((match) => match[1].trim().toLocaleLowerCase('pt-BR')));
+  const suggestions = generateQuizSuggestions(Number(d.id)).filter((question) => !existing.has(question.q.toLocaleLowerCase('pt-BR')));
+  if (!suggestions.length) { toast('As sugestões já estão no editor. Revise-as antes de salvar.'); return; }
+  textarea.value = [current, quizToText(suggestions)].filter(Boolean).join('\n\n');
+  toast('Sugestões adicionadas. Revise as perguntas e respostas antes de salvar.');
 };
 FORMS.quizedit = (d, form) => {
   need('staff'); const cid = Number(form.dataset.id), questions = parseQuiz(d.text);
