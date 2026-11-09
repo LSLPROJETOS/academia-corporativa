@@ -7,9 +7,10 @@ function stopMedia() { if (mediaUrl?.startsWith('blob:')) URL.revokeObjectURL(me
 
 // Aplica tema claro/escuro, cor de destaque e nome da plataforma.
 function applyTheme() {
-  const t = me()?.theme || 'auto';
-  document.documentElement.dataset.theme = t === 'auto' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
-  document.documentElement.style.setProperty('--brand', S.settings.accent);
+  const t = me()?.theme || 'light';
+  document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+  const accent = (S.settings.accent || '').toLowerCase();
+  document.documentElement.style.setProperty('--brand', accent === '#0b6e5f' ? '#7057f5' : (S.settings.accent || '#7057f5'));
   $('brand').textContent = S.settings.platformName; document.title = S.settings.platformName;
 }
 // Desenha o menu e a área do usuário (pontos, sino, perfil, sair).
@@ -58,27 +59,47 @@ VIEWS.resetPassword = () => {
 
 // ---------- Login e cadastro ----------
 function viewLogin() {
-  app.innerHTML = `<section class="auth panel"><h1>Entrar</h1>
-    ${LOCAL_MODE ? '<div class="notice">Modo de teste local — e-mail: <strong>admin@local.test</strong> · senha: <strong>admin123</strong>. Seus dados ficam salvos somente neste navegador.</div>' : ''}
-    <form data-form="login">
-      <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
-      <label>Senha<input name="password" type="password" autocomplete="current-password" required></label>
-      <button class="btn" type="submit">Entrar</button> <button class="btn ghost" type="button" data-action="forgot">Esqueci a senha</button>
-    </form>
-    ${S.settings.openSignup ? '<p class="muted">Ainda não tem conta? <a href="#/register">Cadastre-se</a></p>' : '<p class="muted">Cadastros são feitos pelo administrador.</p>'}</section>`;
+  app.innerHTML = `<section class="auth-screen">
+    <div class="auth-story"><span class="eyebrow">ACADEMIA CORPORATIVA · APRENDIZADO CONTÍNUO</span>
+      <h1>Seu próximo passo começa <span>por aqui.</span></h1>
+      <p>Aprenda no seu ritmo, desenvolva novas habilidades e transforme conhecimento em possibilidades.</p>
+      <div class="auth-note"><span class="auth-note-icon">✳</span><span><strong>Aprender muda tudo.</strong><br>Uma aula de cada vez, no seu tempo.</span></div>
+      <div class="auth-orbit auth-orbit-one"></div><div class="auth-orbit auth-orbit-two"></div>
+    </div>
+    <div class="auth panel"><span class="eyebrow">BOM TER VOCÊ DE VOLTA</span><h2>Entre na sua conta</h2>
+      <p class="muted">Continue de onde parou e siga evoluindo.</p>
+      ${LOCAL_MODE ? '<div class="notice">Modo de teste local — e-mail: <strong>admin@local.test</strong> · senha: <strong>admin123</strong>. Seus dados ficam salvos somente neste navegador.</div>' : ''}
+      <form data-form="login">
+        <label>E-mail<input name="email" type="email" autocomplete="username" placeholder="voce@empresa.com.br" required></label>
+        <label>Senha<input name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required></label>
+        <button class="btn" type="submit">Entrar na plataforma <span aria-hidden="true">→</span></button>
+        <button class="link-btn" type="button" data-action="forgot">Esqueci a senha</button>
+      </form>
+      ${S.settings.openSignup ? '<p class="auth-switch">Ainda não tem conta? <a href="#/register">Criar meu acesso</a></p>' : '<p class="auth-switch muted">Cadastros são feitos pelo administrador.</p>'}</div>
+  </section>`;
 }
 function viewRegister() {
   if (!S.settings.openSignup) return viewLogin();
-  app.innerHTML = `<section class="auth panel"><h1>Criar conta</h1>
-    <div class="notice">A conta será criada como aluno. Um administrador poderá ajustar seu perfil depois.</div>
-    <form data-form="register">
-      <label>Nome completo<input name="name" autocomplete="name" required minlength="2"></label>
-      <label>E-mail<input name="email" type="email" autocomplete="username" required></label>
-      ${sel('Departamento', 'dept', [['', 'Selecione...'], ...S.depts.map((d) => [d, d])], '')}
-      <label>Senha (8+ caracteres, letras e números)<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
-      <label>Repita a senha<input name="password2" type="password" autocomplete="new-password" required minlength="8"></label>
-      <button class="btn" type="submit">Criar conta</button>
-    </form><p class="muted">Já tem conta? <a href="#/login">Entrar</a></p></section>`;
+  app.innerHTML = `<section class="auth-screen">
+    <div class="auth-story"><span class="eyebrow">UM NOVO COMEÇO</span><h1>Invista em você. <span>O futuro acompanha.</span></h1>
+      <p>Faça parte de uma jornada de aprendizado feita para levar você mais longe.</p>
+      <div class="auth-note"><span class="auth-note-icon">✳</span><span><strong>Conhecimento que abre caminhos.</strong><br>Descubra o que você pode construir.</span></div>
+      <div class="auth-orbit auth-orbit-one"></div><div class="auth-orbit auth-orbit-two"></div>
+    </div>
+    <div class="auth panel"><span class="eyebrow">VAMOS COMEÇAR</span><h2>Crie seu acesso</h2>
+      <p class="muted">Preencha seus dados para entrar na plataforma.</p>
+      <div class="notice">A conta será criada como aluno. Um administrador poderá ajustar seu perfil depois.</div>
+      <form data-form="register">
+        <label>Nome completo<input name="name" autocomplete="name" placeholder="Como podemos chamar você?" required minlength="2"></label>
+        <label>E-mail<input name="email" type="email" autocomplete="username" placeholder="voce@empresa.com.br" required></label>
+        ${sel('Departamento', 'dept', [['', 'Selecione...'], ...S.depts.map((d) => [d, d])], '')}
+        <div class="avatar-setup-heading"><strong>Crie seu personagem</strong><span>Personalize seu avatar para começar com a sua cara.</span></div>
+        ${avatarBuilderHTML()}
+        <label>Senha (8+ caracteres, letras e números)<input name="password" type="password" autocomplete="new-password" required minlength="8"></label>
+        <label>Repita a senha<input name="password2" type="password" autocomplete="new-password" required minlength="8"></label>
+        <button class="btn" type="submit">Criar minha conta <span aria-hidden="true">→</span></button>
+      </form><p class="auth-switch">Já tem conta? <a href="#/login">Entrar</a></p></div>
+  </section>`;
 }
 FORMS.login = async (d) => {
   if (LOCAL_MODE) {
@@ -100,11 +121,12 @@ FORMS.register = async (d) => {
   if (d.name.trim().length < 2) fail('Informe o nome (mínimo 2 letras).');
   if (d.password !== d.password2) fail('As senhas não coincidem.');
   if (!pwOk(d.password)) fail(PW_MSG);
+  const avatar = avatarFromForm($('app').querySelector('form[data-form="register"]'));
   if (LOCAL_MODE) {
     const email = d.email.trim().toLowerCase();
     if (S.users.some((u) => u.email.toLowerCase() === email)) fail('Já existe uma conta com este e-mail.');
     const u = { id: nid(), authId: `local-${nid()}`, name: d.name.trim(), email, role: 'aluno', dept: d.dept || '',
-      jobTitle: '', active: true, pending: !!S.settings.requireApproval, points: 0, xp: 0, badges: [], theme: 'auto',
+      jobTitle: '', active: true, pending: !!S.settings.requireApproval, points: 0, xp: 0, badges: [], theme: 'light', avatar,
       createdAt: Date.now(), lastLogin: null, streak: 0, lastCheckin: null, fails: 0, lockUntil: 0, mustChange: false };
     S.users.push(u); localPasswords[u.authId] = await hashLocalPassword(d.password);
     localStorage.setItem(LOCAL_PASSWORDS_KEY, JSON.stringify(localPasswords)); save();
@@ -112,7 +134,7 @@ FORMS.register = async (d) => {
     sessionId = u.id; sessionAuthId = u.authId; u.lastLogin = Date.now(); localStorage.setItem(LOCAL_SESSION_KEY, String(u.id));
     audit('Cadastro'); save(); go('#/home'); return;
   }
-  const { data, error } = await backend.auth.signUp({ email: d.email.trim().toLowerCase(), password: d.password, options: { data: { name: d.name.trim(), dept: d.dept || '' } } });
+  const { data, error } = await backend.auth.signUp({ email: d.email.trim().toLowerCase(), password: d.password, options: { data: { name: d.name.trim(), dept: d.dept || '', avatar } } });
   if (error) fail(error.message);
   if (!data.session) { toast('Cadastro criado. Confirme o e-mail para entrar.'); go('#/login'); return; }
   if (!(await loadRemoteState(data.user))) { go('#/login'); return; }

@@ -1,8 +1,8 @@
 /* ===== CORES, FONTES E TEMAS (claro e escuro). Mude aqui para trocar o visual. ===== */
-:root{--bg:#f3f5f4;--panel:#fff;--ink:#12263a;--muted:#5b6b7a;--line:#d9e0e3;--brand:#0b6e5f;--link:var(--brand);
---soft:color-mix(in srgb,var(--brand) 12%,transparent);--top:#12263a;--coin:#f5b700;--danger:#b3261e;--warn:#9a5b00;--ok:#1b7f3b;
---radius:12px;--font-body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--font-head:"Sora","Public Sans",system-ui,sans-serif}
-[data-theme=dark]{--bg:#0f1720;--panel:#17212c;--ink:#e6edf3;--muted:#9aa9b6;--line:#2a3846;--top:#0a1118;
+:root{--bg:#fbfaf8;--panel:#fff;--ink:#27243a;--muted:#777487;--line:#eeecf0;--brand:#7057f5;--link:var(--brand);
+--soft:color-mix(in srgb,var(--brand) 12%,transparent);--top:#211d35;--coin:#d8f36a;--danger:#b3261e;--warn:#9a5b00;--ok:#1b7f3b;
+--radius:20px;--font-body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--font-head:"Space Grotesk","DM Sans",system-ui,sans-serif}
+[data-theme=dark]{--bg:#15131e;--panel:#211f2b;--ink:#f4f1fb;--muted:#aaa5b7;--line:#383544;--top:#100e18;
 --link:color-mix(in srgb,var(--brand) 55%,white);--soft:color-mix(in srgb,var(--brand) 28%,transparent);--danger:#ff8a80;--warn:#ffc266;--ok:#6fdc8c}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}

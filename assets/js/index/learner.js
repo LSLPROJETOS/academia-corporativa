@@ -18,20 +18,23 @@ VIEWS.home = async () => {
   const recs = visibleCourses(u).filter((c) => !isEnrolled(u.id, c.id) && c.status === 'publicado').slice(0, 3);
   const news = S.announcements.slice().sort((a, b) => (b.pinned - a.pinned) || b.at - a.at).slice(0, 3);
   app.innerHTML = `
-    <div class="hero"><div class="grow"><div class="small">${esc(u.dept || ROLE[u.role])}</div><h1>Olá, ${esc(u.name.split(' ')[0])}!</h1>
-      <p style="margin:6px 0">Nível ${li.level} · ${li.title} · ${u.xp} XP${st.streak ? ` · 🔥 ${st.streak} dia${st.streak > 1 ? 's' : ''} seguidos` : ''}</p>
-      <div class="bar"><span style="width:${li.pct}%"></span></div><div class="small" style="margin-top:4px">${li.next - u.xp} XP para o nível ${li.level + 1}</div></div>
-      <div class="actions"><button class="btn gold" data-action="checkin" ${checked ? 'disabled' : ''}>${checked ? 'Check-in feito hoje ✓' : `Check-in diário (+${S.settings.dailyBonus} pts)`}</button><a class="btn ghost" style="color:#fff;border-color:#fff" href="#/store">Ir à loja</a></div></div>
+    <section class="hero learning-hero"><div class="grow"><span class="eyebrow">${esc(u.dept || ROLE[u.role])} <span aria-hidden="true">·</span> NÍVEL ${li.level}</span>
+      <h1>Oi, ${esc(u.name.split(' ')[0])}!<br>O que vamos aprender <span>hoje?</span></h1>
+      <p class="hero-subtitle">Seu próximo passo está mais perto do que parece.</p>
+      <div class="hero-progress"><div class="spread small"><span>${li.title} · ${u.xp} XP</span><span>${li.next - u.xp} XP para o nível ${li.level + 1}</span></div><div class="bar"><span style="width:${li.pct}%"></span></div></div></div>
+      <div class="hero-actions"><div class="hero-streak">${st.streak ? `🔥 ${st.streak} dia${st.streak > 1 ? 's' : ''} seguidos` : '✳ Seu ritmo, sua jornada'}</div>
+        <button class="btn gold" data-action="checkin" ${checked ? 'disabled' : ''}>${checked ? 'Check-in feito hoje ✓' : `Fazer check-in · +${S.settings.dailyBonus} pts`}</button><a class="hero-store-link" href="#/store">Explorar a loja <span aria-hidden="true">↗</span></a></div></section>
     <div class="grid sm" style="margin-bottom:20px">
       <div class="stat"><b>${u.points}</b><span>Pontos disponíveis</span></div><div class="stat"><b>${pend.length}</b><span>Cursos em andamento</span></div>
       <div class="stat"><b>${st.courses}</b><span>Cursos concluídos</span></div><div class="stat"><b>${st.lessons}</b><span>Aulas concluídas</span></div>
       <div class="stat"><b>${u.badges.length}/${BADGES.length}</b><span>Conquistas</span></div></div>
     ${isAdmin() && !S.courses.length ? panel('<h2>Plataforma vazia</h2><p class="muted">Quer ver tudo funcionando? Carregue cursos, produtos e alunos de exemplo (você pode apagar depois).</p><button class="btn" data-action="seed">Carregar dados de demonstração</button>') : ''}
-    ${duty.length ? panel(`<h2>⚠ Obrigatórios pendentes</h2>${duty.map((x) => `<div class="spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><a href="#/course/${x.c.id}"><strong>${esc(x.c.title)}</strong></a><div class="muted small">${x.p.done}/${x.p.total} aulas${x.p.quizOk ? '' : ' · prova pendente'}</div></div>${dueTag(dueOf(x.e, x.c))}</div>`).join('')}`) : ''}
-    ${cont ? panel(`<h2>Continuar estudando</h2><div class="spread"><div><strong>${esc(cont.c.title)}</strong><div class="bar" style="width:260px;margin-top:6px"><span style="width:${cont.p.pct}%"></span></div><div class="muted small">${cont.p.pct}% concluído</div></div><a class="btn" href="#/course/${cont.c.id}">Continuar</a></div>`) : ''}
+    ${duty.length ? panel(`<div class="section-heading"><div><span class="eyebrow">NA SUA JORNADA</span><h2>Obrigatórios pendentes</h2></div></div>${duty.map((x) => `<div class="spread course-row"><div><a href="#/course/${x.c.id}"><strong>${esc(x.c.title)}</strong></a><div class="muted small">${x.p.done}/${x.p.total} aulas${x.p.quizOk ? '' : ' · prova pendente'}</div></div>${dueTag(dueOf(x.e, x.c))}</div>`).join('')}`) : ''}
+    ${cont ? panel(`<div class="section-heading"><div><span class="eyebrow">RETOME DE ONDE PAROU</span><h2>Continue aprendendo</h2></div><a class="text-link" href="#/mine">Ver meus cursos ↗</a></div><div class="continue-card"><div class="continue-art"><span>${esc(cont.c.emoji || '✳')}</span></div><div class="continue-info"><span class="tag">${esc(cont.c.area || CAT[cont.c.category])}</span><h3>${esc(cont.c.title)}</h3><div class="bar"><span style="width:${cont.p.pct}%"></span></div><div class="muted small">${cont.p.pct}% concluído · ${cont.p.done} de ${cont.p.total} aulas</div></div><a class="btn" href="#/course/${cont.c.id}">Continuar <span aria-hidden="true">→</span></a></div>`) : ''}
     ${news.length ? panel(`<h2>📢 Mural de avisos</h2>${news.map((n) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong> <span class="muted small">${fmtDate(n.at)}</span><div>${esc(n.text)}</div></div>`).join('')}`) : ''}
-    ${recs.length ? `<h2>Recomendados para você</h2><div class="grid" style="margin-bottom:20px">${recs.map((c) => courseCard(c, u)).join('')}</div>` : ''}
-    <h2>Conquistas</h2><div class="badges">${BADGES.map((b) => `<div class="badge ${u.badges.includes(b.id) ? '' : 'locked'}"><div class="ic">${b.icon}</div><strong>${b.name}</strong><div class="muted small">${b.desc}</div></div>`).join('')}</div>`;
+    ${recs.length ? `<div class="section-heading"><div><span class="eyebrow">FEITO PARA VOCÊ</span><h2>Descubra seu próximo curso</h2></div><a class="text-link" href="#/courses">Ver catálogo ↗</a></div><div class="grid" style="margin-bottom:28px">${recs.map((c) => courseCard(c, u)).join('')}</div>` : ''}
+    <section class="achievement-section"><div class="achievement-heading"><div><span class="eyebrow">CADA CONQUISTA CONTA</span><h2>Suas conquistas</h2><p>Aprender também é colecionar pequenas vitórias.</p></div><span class="achievement-total"><strong>${u.badges.length}</strong><span>de ${BADGES.length}<br>conquistas</span></span></div>
+      <div class="badges achievement-grid">${BADGES.map((b) => { const earned = u.badges.includes(b.id); return `<article class="badge achievement-card badge-${b.id} ${earned ? 'earned' : 'locked'}"><div class="badge-medal"><span class="badge-medal-shine"></span><span class="ic">${b.icon}</span><span class="badge-check" aria-hidden="true">${earned ? '✓' : '·'}</span></div><strong>${b.name}</strong><div class="muted small">${b.desc}</div><span class="badge-status">${earned ? 'Conquistada' : 'Continue aprendendo'}</span></article>`; }).join('')}</div></section>`;
 };
 ACTIONS.checkin = () => { const t = checkin(me().id); if (t) toast(`Check-in feito! +${t} pontos`); renderChrome(); rerender(); };
 ACTIONS.seed = async () => { need('admin'); await seedDemo(); toast('Cursos, aulas e produtos de demonstração carregados.'); rerender(); };
@@ -52,31 +55,78 @@ function filterCourses(u) {
   const by = { recent: (a, b) => b.createdAt - a.createdAt, title: (a, b) => a.title.localeCompare(b.title), popular: (a, b) => S.enrollments.filter((e) => e.courseId === b.id).length - S.enrollments.filter((e) => e.courseId === a.id).length, rating: (a, b) => avgRating(b.id).avg - avgRating(a.id).avg }[f.sort];
   return L.sort(by);
 }
-const courseListHTML = () => { const u = me(), L = filterCourses(u); return L.length ? L.map((c) => courseCard(c, u)).join('') : `<div class="panel empty" style="grid-column:1/-1">${catalogMode === 'mine' ? 'Você ainda não está inscrito em nenhum curso (ou nenhum bate com o filtro).' : 'Nenhum curso encontrado.'}</div>`; };
+const courseListHTML = () => {
+  const u = me(), L = filterCourses(u), count = $('course-result-count');
+  if (count) count.textContent = `${L.length} ${L.length === 1 ? 'curso encontrado' : 'cursos encontrados'}`;
+  const grid = $('course-list');
+  if (grid) grid.classList.toggle('single-course-grid', L.length === 1);
+  return L.length ? L.map((c, i) => courseCard(c, u, i === 0)).join('') : `<div class="panel empty" style="grid-column:1/-1">${catalogMode === 'mine' ? 'Você ainda não está inscrito em nenhum curso (ou nenhum bate com o filtro).' : 'Nenhum curso encontrado.'}</div>`;
+};
 REFRESH.C = () => { $('course-list').innerHTML = courseListHTML(); };
 function viewCatalog() {
   const f = FILTERS.C, areas = [...new Set(S.courses.map((c) => c.area).filter(Boolean))].sort();
-  app.innerHTML = `<div class="page-head"><h1>${catalogMode === 'mine' ? 'Meus cursos' : 'Cursos e padrões de serviço'}</h1>${isStaff() ? '<button class="btn" data-action="course-new">+ Novo curso</button>' : ''}</div>
-    <div class="panel"><div class="row"><label>Buscar<input data-filter="C.q" value="${esc(f.q)}" placeholder="Título, área, instrutor..."></label>
-      ${fsel('Tipo', 'C.cat', [['', 'Todos'], ['curso', 'Cursos'], ['padrao_servico', 'Padrões de serviço']], f.cat)}
-      ${fsel('Área', 'C.area', [['', 'Todas'], ...areas.map((a) => [a, a])], f.area)}
-      ${fsel('Nível', 'C.level', [['', 'Todos'], ...Object.entries(LEVELS)], f.level)}
-      ${fsel('Situação', 'C.status', [['', 'Todas'], ['andamento', 'Em andamento'], ['concluidos', 'Concluídos'], ['obrigatorios', 'Obrigatórios'], ['favoritos', 'Favoritos'], ...(catalogMode === 'all' ? [['inscritos', 'Inscrito'], ['nao', 'Não inscrito']] : [])], f.status)}
-      ${fsel('Ordenar', 'C.sort', [['recent', 'Mais recentes'], ['title', 'Título (A-Z)'], ['popular', 'Mais populares'], ['rating', 'Melhor avaliados']], f.sort)}</div></div>
-    <div class="grid" id="course-list">${courseListHTML()}</div>`;
+  const total = catalogMode === 'mine' ? S.enrollments.filter((e) => e.userId === me().id).length : visibleCourses(me()).filter((c) => c.status === 'publicado' || isEnrolled(me().id, c.id)).length;
+  const resultCount = filterCourses(me()).length;
+  app.innerHTML = `<section class="catalog-banner ${catalogMode === 'mine' ? 'my-learning-banner' : ''}">
+      <div class="catalog-banner-copy"><span class="catalog-kicker"><span class="catalog-kicker-dot"></span>${catalogMode === 'mine' ? 'SUA ÁREA DE APRENDIZADO' : 'CONHECIMENTO PARA IR ALÉM'}</span>
+        <h1>${catalogMode === 'mine' ? 'Sua próxima conquista está aqui.' : 'Aprenda algo que move você.'}</h1>
+        <p>${catalogMode === 'mine' ? 'Retome seu ritmo, acompanhe seu progresso e celebre cada etapa.' : 'Conteúdos práticos para abrir caminhos e transformar o seu dia a dia.'}</p>
+        <div class="catalog-proof"><span class="catalog-proof-mark">✳</span><span><strong>${total}</strong> ${total === 1 ? 'jornada de aprendizado' : 'jornadas de aprendizado'}<small>no seu tempo, do seu jeito</small></span></div>
+      </div>
+      <div class="catalog-banner-art" aria-hidden="true"><div class="catalog-art-disc"></div><div class="catalog-art-ring"></div><span class="catalog-art-spark spark-one">✳</span><span class="catalog-art-spark spark-two">✦</span><span class="catalog-art-book">${catalogMode === 'mine' ? '✓' : '↗'}</span><span class="catalog-art-word">VAI<br>ALÉM</span></div>
+      ${isStaff() ? '<button class="btn catalog-create" data-action="course-new">+ Criar curso</button>' : ''}</section>
+    <div class="catalog-tools"><label class="catalog-search"><span aria-hidden="true">⌕</span><input data-filter="C.q" value="${esc(f.q)}" placeholder="Busque por curso, tema ou instrutor..."></label>
+      <details class="course-filters"><summary><span aria-hidden="true">☷</span> Filtrar e ordenar</summary><div class="course-filter-grid">
+        ${fsel('Tipo de conteúdo', 'C.cat', [['', 'Todos os tipos'], ['curso', 'Cursos'], ['padrao_servico', 'Padrões de serviço']], f.cat)}
+        ${fsel('Área', 'C.area', [['', 'Todas as áreas'], ...areas.map((a) => [a, a])], f.area)}
+        ${fsel('Nível', 'C.level', [['', 'Todos os níveis'], ...Object.entries(LEVELS)], f.level)}
+        ${fsel('Seu progresso', 'C.status', [['', 'Todas as situações'], ['andamento', 'Em andamento'], ['concluidos', 'Concluídos'], ['obrigatorios', 'Obrigatórios'], ['favoritos', 'Favoritos'], ...(catalogMode === 'all' ? [['inscritos', 'Inscrito'], ['nao', 'Não inscrito']] : [])], f.status)}
+        ${fsel('Ordenar por', 'C.sort', [['recent', 'Mais recentes'], ['title', 'Título (A-Z)'], ['popular', 'Mais populares'], ['rating', 'Melhor avaliados']], f.sort)}</div></details>
+    </div>
+    <div class="catalog-results-heading"><div><span class="eyebrow">${catalogMode === 'mine' ? 'CONTINUE DE ONDE PAROU' : 'ESCOLHA SEU PRÓXIMO PASSO'}</span><h2>${catalogMode === 'mine' ? 'Seus cursos' : 'Um mundo de possibilidades'}</h2></div><span class="catalog-result-count" id="course-result-count"></span></div>
+    <div class="grid course-grid" id="course-list">${courseListHTML()}</div>`;
+  $('course-result-count').textContent = `${resultCount} ${resultCount === 1 ? 'curso encontrado' : 'cursos encontrados'}`;
+  $('course-list').classList.toggle('single-course-grid', resultCount === 1);
 }
 // Cartão de curso (clicável). O botão de favorito tem ação própria.
-function courseCard(c, u) {
+function courseCard(c, u, featured = false) {
   const en = enrollment(u.id, c.id), p = courseProg(u.id, c.id), r = avgRating(c.id), fav = isFav(u.id, c.id);
-  return `<div class="card course" data-action="go" data-href="#/course/${c.id}"><div class="cover" style="--h:${hue(c.id)}"><span>${esc(c.emoji || '📘')}</span>
-    <button class="fav ${fav ? 'on' : ''}" data-action="fav" data-id="${c.id}" aria-label="Favoritar">${fav ? '★' : '☆'}</button></div>
-    <div class="tags">${tag(CAT[c.category], c.category === 'padrao_servico' ? 'service' : '')}${c.mandatory ? tag('Obrigatório', 'bad') : ''}${c.status !== 'publicado' ? tag('Rascunho', 'warn') : ''}${p.complete ? tag('Concluído ✓', 'ok') : ''}</div>
-    <h3><a href="#/course/${c.id}">${esc(c.title)}</a></h3><p class="muted clamp">${esc(c.description)}</p>
-    <div class="muted small">${p.total} aula${p.total === 1 ? '' : 's'} · ${fmtDur(courseHours(c.id))}${r.n ? ` · ★ ${r.avg.toFixed(1)}` : ''}</div>
-    ${en ? `<div class="bar"><span style="width:${p.pct}%"></span></div><div class="actions small muted">${p.pct}% concluído ${dueTag(dueOf(en, c), p.complete)}</div>` : '<div class="muted small">Não inscrito</div>'}</div>`;
+  const area = c.area || 'FORMAÇÃO CONTÍNUA';
+  return `<article class="card course course-card ${featured ? 'course-featured' : ''}" data-action="go" data-href="#/course/${c.id}">
+    <div class="course-cover" style="--h:${hue(c.id)}">
+      <div class="course-cover-decoration" aria-hidden="true"></div>
+      <div class="course-cover-top"><span class="course-cover-type">${esc(CAT[c.category] || 'Curso')}</span><button class="fav ${fav ? 'on' : ''}" data-action="fav" data-id="${c.id}" aria-label="${fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">${fav ? '★' : '☆'}</button></div>
+      <div class="course-cover-main"><span class="course-cover-area">${esc(area)}</span><h3>${esc(c.title)}</h3><span class="course-cover-lessons">${p.total} AULA${p.total === 1 ? '' : 'S'} <i></i> ${fmtDur(courseHours(c.id))}</span></div>
+      <div class="course-cover-art" aria-hidden="true"><span>${esc(c.emoji || '📘')}</span></div>
+      <span class="course-cover-index" aria-hidden="true">${String((c.id % 99) + 1).padStart(2, '0')}</span>
+    </div>
+    <div class="course-card-body">
+      <div class="course-card-tags">${tag(LEVELS[c.level] || 'Todos os níveis', 'course-level')}${c.mandatory ? tag('Obrigatório', 'course-required') : ''}${c.status !== 'publicado' ? tag('Rascunho', 'warn') : ''}${p.complete ? tag('Concluído ✓', 'ok') : ''}</div>
+      <p class="course-description">${esc(c.description || 'Conteúdo prático para você desenvolver novas habilidades e avançar na sua jornada profissional.')}</p>
+      ${en ? `<div class="course-progress"><div class="spread small"><span>${p.pct}% concluído</span>${dueTag(dueOf(en, c), p.complete)}</div><div class="bar"><span style="width:${p.pct}%"></span></div></div>` : ''}
+      <div class="course-card-footer"><span>${r.n ? `★ ${r.avg.toFixed(1)} <i>·</i> ${r.n} avaliação${r.n === 1 ? '' : 'ões'}` : esc(c.instructor || 'Academia Corporativa')}</span><a href="#/course/${c.id}" class="course-open-link">${en ? 'Continuar' : 'Conhecer curso'} <span aria-hidden="true">→</span></a></div>
+    </div>
+  </article>`;
 }
 ACTIONS.go = (d) => { location.hash = d.href; };
 ACTIONS.fav = (d) => { const u = me(), id = Number(d.id); S.favorites = isFav(u.id, id) ? S.favorites.filter((f) => !(f.userId === u.id && f.courseId === id)) : [...S.favorites, { userId: u.id, courseId: id }]; save(); rerender(); };
+ACTIONS['avatar-pick'] = (d, el) => {
+  if (!Object.hasOwn(AVATAR_OPTIONS, d.key)) fail('Esta opção de personagem não existe.');
+  const option = AVATAR_OPTIONS[d.key].find(([id]) => id === d.value);
+  if (!option) fail('Esta aparência não está disponível.');
+  const builder = el.closest('.avatar-builder'), form = el.closest('form');
+  if (!builder || !form) fail('Não foi possível atualizar o personagem.');
+  const input = form.elements[`avatar_${d.key}`];
+  if (!input) fail('Campo do personagem não encontrado.');
+  input.value = d.value;
+  const choices = el.parentElement.querySelectorAll('.avatar-choice');
+  choices.forEach((choice) => {
+    const selected = choice === el;
+    choice.classList.toggle('selected', selected);
+    choice.setAttribute('aria-pressed', String(selected));
+  });
+  builder.querySelector('.avatar-preview-art').innerHTML = avatarSVG(avatarFromForm(form));
+};
 
 // Biblioteca central: lista vídeos dos cursos acessíveis e abre a aula selecionada.
 VIEWS.videos = () => {
@@ -413,7 +463,8 @@ VIEWS.profile = (id) => {
   app.innerHTML = `<div class="panel"><div class="spread"><div class="actions">${avatar(t, 'lg')}<div><h1 style="margin:0">${esc(t.name)}</h1><div class="muted">${esc(t.jobTitle || ROLE[t.role])} · ${esc(t.dept || 'Sem departamento')}</div><div class="muted small">${esc(t.email)}</div></div></div>
       <div style="min-width:240px"><strong>Nível ${li.level} · ${li.title}</strong><div class="bar gold" style="margin:6px 0"><span style="width:${li.pct}%"></span></div><div class="small muted">${t.xp} XP · saldo ${t.points} pontos · 🔥 ${st.streak} dias</div></div></div></div>
     <div class="grid sm" style="margin-bottom:20px"><div class="stat"><b>${st.lessons}</b><span>Aulas concluídas</span></div><div class="stat"><b>${st.courses}</b><span>Cursos concluídos</span></div><div class="stat"><b>${enr.length}</b><span>Inscrições</span></div><div class="stat"><b>${st.redeems}</b><span>Trocas</span></div></div>
-    <h2>Conquistas (${t.badges.length}/${BADGES.length})</h2><div class="badges" style="margin-bottom:20px">${BADGES.map((b) => `<div class="badge ${t.badges.includes(b.id) ? '' : 'locked'}"><div class="ic">${b.icon}</div><strong>${b.name}</strong><div class="muted small">${b.desc}</div></div>`).join('')}</div>
+    <section class="achievement-section profile-achievements"><div class="achievement-heading"><div><span class="eyebrow">JORNADA DE APRENDIZADO</span><h2>Conquistas</h2><p>Marcos que contam a história de cada avanço.</p></div><span class="achievement-total"><strong>${t.badges.length}</strong><span>de ${BADGES.length}<br>conquistas</span></span></div>
+      <div class="badges achievement-grid">${BADGES.map((b) => { const earned = t.badges.includes(b.id); return `<article class="badge achievement-card badge-${b.id} ${earned ? 'earned' : 'locked'}"><div class="badge-medal"><span class="badge-medal-shine"></span><span class="ic">${b.icon}</span><span class="badge-check" aria-hidden="true">${earned ? '✓' : '·'}</span></div><strong>${b.name}</strong><div class="muted small">${b.desc}</div><span class="badge-status">${earned ? 'Conquistada' : 'Continue aprendendo'}</span></article>`; }).join('')}</div></section>
     ${panel(`<h2>Certificados</h2>${certs.length ? certs.map((c) => `<div class="spread" style="padding:6px 0"><span>🎓 ${esc(course(c.courseId)?.title || 'Curso removido')} <span class="muted small">${new Date(c.at).toLocaleDateString('pt-BR')}</span></span><a class="btn small gold" href="#/certificate/${c.code}">Abrir</a></div>`).join('') : '<p class="muted">Nenhum certificado ainda.</p>'}`)}
     ${panel(`<h2>Últimos pontos</h2>${hist.length ? `<div class="table-wrap"><table>${hist.map((h) => `<tr><td>${esc(h.reason)}</td><td>${h.delta > 0 ? '+' : ''}${h.delta}</td><td>${fmtDate(h.at)}</td></tr>`).join('')}</table></div>` : '<p class="muted">Sem movimentações.</p>'}`)}`;
 };
@@ -429,19 +480,20 @@ VIEWS.notifications = () => {
 VIEWS.account = () => {
   const u = me();
   app.innerHTML = `<div class="page-head"><h1>Minha conta</h1></div>${u.mustChange ? '<div class="notice">Por segurança, defina uma nova senha para continuar.</div>' : ''}
-    <div class="row">${u.mustChange ? '' : `<section class="panel"><h2>Meus dados</h2><form data-form="profile">${fld('Nome', 'name', u.name, 'required minlength="2"')}${fld('Cargo', 'jobTitle', u.jobTitle)}
-      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']], u.theme)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar</button></form></section>`}
+    <div class="row">${u.mustChange ? '' : `<section class="panel account-profile-panel"><h2>Meus dados</h2><form data-form="profile">${fld('Nome', 'name', u.name, 'required minlength="2"')}${fld('Cargo', 'jobTitle', u.jobTitle)}
+      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['light', 'Claro (recomendado)'], ['dark', 'Escuro']], u.theme === 'dark' ? 'dark' : 'light')}<div class="avatar-setup-heading"><strong>Seu personagem</strong><span>Troque o visual quando quiser. A mudança aparece no seu perfil e na plataforma.</span></div>${avatarBuilderHTML(u.avatar)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar alterações</button></form></section>`}
     <section class="panel"><h2>Alterar senha</h2><form data-form="password"><label>Senha atual<input name="current" type="password" autocomplete="current-password" required></label>
       <label>Nova senha (8+ caracteres, letras e números)<input name="next" type="password" autocomplete="new-password" required minlength="8"></label><button class="btn" type="submit">Salvar senha</button></form></section></div>`;
 };
-FORMS.profile = async (d) => {
+FORMS.profile = async (d, form) => {
   const u = me(); if (d.name.trim().length < 2) fail('Informe o nome.');
-  const patch = { name: d.name.trim(), job_title: d.jobTitle.trim(), dept: d.dept, theme: d.theme };
+  const avatar = avatarFromForm(form);
+  const patch = { name: d.name.trim(), job_title: d.jobTitle.trim(), dept: d.dept, theme: d.theme, avatar };
   if (!LOCAL_MODE) {
     const { error } = await backend.from('profiles').update(patch).eq('id', sessionAuthId);
     if (error) fail(error.message);
   }
-  Object.assign(u, { name: patch.name, jobTitle: patch.job_title, dept: patch.dept, theme: patch.theme });
+  Object.assign(u, { name: patch.name, jobTitle: patch.job_title, dept: patch.dept, theme: patch.theme, avatar });
   profileSnapshots.set(u.authId, profileSnapshot(u)); save(); applyTheme(); toast('Dados salvos.'); rerender();
 };
 FORMS.password = async (d, form) => {
