@@ -10,7 +10,9 @@ function applyTheme() {
   document.documentElement.dataset.theme = me()?.theme === 'light' ? 'light' : 'dark';
   const accent = (S.settings.accent || '').toLowerCase();
   document.documentElement.style.setProperty('--brand', accent === '#0b6e5f' ? '#7057f5' : (S.settings.accent || '#7057f5'));
-  $('brand').textContent = S.settings.platformName; document.title = S.settings.platformName;
+  $('brand-name').textContent = S.settings.platformName;
+  $('brand').setAttribute('aria-label', `${S.settings.platformName} — Aprender abre possibilidades`);
+  document.title = S.settings.platformName;
 }
 // Desenha o menu e a área do usuário (pontos, sino, perfil, sair).
 function renderChrome() {

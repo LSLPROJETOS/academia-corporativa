@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="icon" type="image/svg+xml" href="assets/img/brand-door.svg">
 <link rel="stylesheet" href="assets/css/index/base.css">
 <link rel="stylesheet" href="assets/css/index/navigation.css">
 <link rel="stylesheet" href="assets/css/index/components.css">
@@ -16,7 +17,10 @@
 <body>
 <!-- BARRA SUPERIOR: marca, menu e área do usuário (preenchidos pelo JavaScript) -->
 <header class="topbar" id="topbar">
-  <a class="brand" id="brand" href="#/home">Academia Corporativa</a>
+  <a class="brand" id="brand" href="#/home" aria-label="Academia Corporativa — Aprender abre possibilidades">
+    <img src="assets/img/brand-door.svg" alt="">
+    <span class="brand-copy"><span id="brand-name">Academia Corporativa</span><span class="brand-tagline">Aprender abre possibilidades</span></span>
+  </a>
   <button class="menu-btn" data-action="menu" aria-label="Abrir menu">☰</button>
   <nav id="nav" aria-label="Principal"></nav>
   <div id="user-area"></div>

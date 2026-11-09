@@ -17,8 +17,11 @@
 .avatar.sm{width:28px;height:28px;font-size:.7rem}.avatar.lg{width:72px;height:72px;font-size:1.5rem}
 
 .topbar{gap:20px;padding:12px max(24px,calc((100vw - 1320px)/2));background:color-mix(in srgb,var(--panel) 92%,transparent);color:var(--ink);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
-.brand{display:flex;align-items:center;gap:10px;color:var(--ink);font:700 1rem var(--font-head);letter-spacing:-.04em}
-.brand::before{content:"✳";display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:var(--brand);color:#fff;font-size:1.1rem;box-shadow:0 6px 16px color-mix(in srgb,var(--brand) 25%,transparent)}
+.brand{display:flex;align-items:center;gap:11px;color:var(--ink);text-decoration:none;letter-spacing:-.04em}
+.brand img{display:block;width:42px;height:42px;flex:none;border-radius:14px;box-shadow:0 7px 18px color-mix(in srgb,var(--brand) 25%,transparent)}
+.brand-copy{display:grid;gap:3px}
+.brand #brand-name{font:700 .94rem/1.1 var(--font-head)}
+.brand-tagline{color:var(--muted);font:600 .64rem/1.1 var(--font-body);letter-spacing:.015em}
 #nav{justify-content:center;gap:4px}
 #nav a{color:var(--muted);font-size:.9rem;font-weight:600;padding:9px 13px;border-radius:999px;transition:background .2s,color .2s}
 #nav a:hover,#nav a.active{background:var(--soft);color:var(--brand)}
