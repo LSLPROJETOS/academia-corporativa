@@ -99,61 +99,143 @@ function generateQuizSuggestions(courseId) {
   const lessons = lessonsOf(Number(courseId)).filter((lesson) => lesson.type === 'texto' && lesson.content.trim());
   if (!lessons.length) fail('Este curso não tem aulas de texto com conteúdo para analisar.');
 
-  const stopWords = new Set(('a ainda algo algumas alguns ali ao aos aquela aquelas aquele aqueles aquilo as até com como contra da das de dela delas dele deles depois do dos e ela elas ele eles em entre era essa essas esse esses esta estas este estes eu foi foram há isso isto já lhe lhes mais mas me mesmo meu meus minha minhas muito na não nas nem nenhum nessa nesse nesta neste no nos nossa nossas nosso nossos num numa o os ou outra outras outro outros para pela pelas pelo pelos por porque qual quando quanto que quem se sem ser seu seus sua suas também te tem temos ter teu teus toda todas todo todos tu tua tuas um uma umas uns você vocês').split(' '));
-  const wordPattern = /[A-Za-zÀ-ÿ0-9]+(?:['’][A-Za-zÀ-ÿ0-9]+)*/g;
-  const wordsIn = (text) => text.match(wordPattern) || [];
-  const concepts = [];
-  const sentences = [];
+  const maxSuggestions = 8, suggestions = [], seenQuestions = new Set();
+  const clean = (text) => text
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*|__([^_]+)__/g, '$1$2')
+    .replace(/[*_~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const normalize = (text) => text.toLocaleLowerCase('pt-BR');
+  const addSuggestion = (question, options, answer, explain, seed) => {
+    const distinct = [...new Map(options.map((option) => [normalize(option), option])).values()];
+    if (!question || suggestions.length >= maxSuggestions || distinct.length < 3) return;
+    const qKey = normalize(question);
+    if (seenQuestions.has(qKey)) return;
+    const correct = distinct.findIndex((option) => normalize(option) === normalize(answer));
+    if (correct < 0) return;
+    const offset = [...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % distinct.length;
+    const rotated = distinct.slice(offset).concat(distinct.slice(0, offset));
+    seenQuestions.add(qKey);
+    suggestions.push({
+      q: question,
+      options: rotated,
+      correct: rotated.findIndex((option) => normalize(option) === normalize(answer)),
+      explain
+    });
+  };
+  const formatNumber = (value) => value.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const singularUnits = {
+    segundo: 'segundo', segundos: 'segundo', minuto: 'minuto', minutos: 'minuto',
+    hora: 'hora', horas: 'hora', dia: 'dia', dias: 'dia', semana: 'semana',
+    semanas: 'semana', mes: 'mês', meses: 'mês', ano: 'ano', anos: 'ano',
+    ponto: 'ponto', pontos: 'ponto', etapa: 'etapa', etapas: 'etapa',
+    vez: 'vez', vezes: 'vez'
+  };
+  const pluralUnits = {
+    segundo: 'segundos', minuto: 'minutos', hora: 'horas', dia: 'dias',
+    semana: 'semanas', mês: 'meses', ano: 'anos', ponto: 'pontos',
+    etapa: 'etapas', vez: 'vezes'
+  };
 
   lessons.forEach((lesson) => {
-    const plain = lesson.content
-      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/`([^`]+)`/g, '$1');
-    plain.split(/\r?\n/).forEach((line) => {
-      const trimmed = line.trim();
-      if (/^#{1,6}\s/.test(trimmed)) return;
-      const source = trimmed.replace(/^[-*+]\s*/, '').replace(/^\d+[.)]\s*/, '');
-      if (!source) return;
-      source.split(/[.!?;]+/).forEach((part) => {
-        const text = part.replace(/\*\*/g, '').replace(/__/g, '').replace(/[*_~]/g, '').trim();
-        const words = wordsIn(text);
-        const meaningful = words.filter((word) => word.length >= 4 && !stopWords.has(word.toLocaleLowerCase('pt-BR')));
-        if (meaningful.length < 2) return;
+    const lines = lesson.content.split(/\r?\n/);
+    const stages = lines.flatMap((line) => {
+      const match = line.trim().match(/^(?:#{1,6}\s*)?(?:ETAPA|FASE)\s+(\d{1,2})\s*[:.)–-]\s*(.+)$/i);
+      if (!match) return [];
+      const title = clean(match[2]).replace(/[.!?;]+$/, '');
+      return title ? [{ number: Number(match[1]), title }] : [];
+    }).filter((stage, index, all) =>
+      all.findIndex((other) => other.number === stage.number && normalize(other.title) === normalize(stage.title)) === index
+    );
 
-        const emphasized = [...source.matchAll(/\*\*([^*]+)\*\*|__([^_]+)__/g)]
-          .flatMap((match) => wordsIn(match[1] || match[2]))
-          .find((word) => words.includes(word) && word.length >= 4 && !stopWords.has(word.toLocaleLowerCase('pt-BR')));
-        const answer = emphasized || meaningful.slice().sort((a, b) => b.length - a.length)[0];
-        sentences.push({ lesson, text, answer });
-        if (!concepts.some((word) => word.toLocaleLowerCase('pt-BR') === answer.toLocaleLowerCase('pt-BR')))
-          concepts.push(answer);
-        meaningful.forEach((word) => {
-          if (!concepts.some((item) => item.toLocaleLowerCase('pt-BR') === word.toLocaleLowerCase('pt-BR')))
-            concepts.push(word);
-        });
+    if (stages.length >= 3) {
+      stages.forEach((stage) => {
+        const answer = stage.title;
+        const options = [answer, ...stages
+          .filter((other) => other.number !== stage.number && normalize(other.title) !== normalize(answer))
+          .map((other) => other.title)
+          .slice(0, 3)];
+        addSuggestion(
+          `Qual é o foco da ETAPA ${stage.number} no processo apresentado na aula "${lesson.title}"?`,
+          options,
+          answer,
+          `O material identifica a ETAPA ${stage.number} como "${stage.title}".`,
+          `${lesson.id}:etapa-${stage.number}`
+        );
       });
+    }
+
+    lines.forEach((line) => {
+      const plain = clean(line);
+      if (!plain || /^#{1,6}\s/.test(line.trim())) return;
+
+      for (const match of line.matchAll(/\*\*([^*]+)\*\*|__([^_]+)__/g)) {
+        const answer = (match[1] || match[2]).trim();
+        const quantity = answer.match(/^(\d+(?:[.,]\d+)?)\s+(segundos?|minutos?|horas?|dias?|semanas?|meses?|anos?|pontos?|etapas?|vezes?)$/i);
+        if (!quantity) continue;
+        const value = Number(quantity[1].replace(',', '.'));
+        const unit = singularUnits[quantity[2].toLocaleLowerCase('pt-BR')];
+        if (!Number.isFinite(value) || value <= 0 || value > 1000000 || !unit) continue;
+        const alternatives = [...new Set([value > 1 ? value - 1 : value / 2, value + 1, value * 2, value + 3].filter((n) => n > 0 && n !== value))].slice(0, 3);
+        const options = [answer, ...alternatives.map((n) => `${formatNumber(n)} ${n === 1 ? unit : pluralUnits[unit]}`)];
+        const question = `Complete conforme a aula "${lesson.title}": ${plain.replace(answer, '_____')}`;
+        addSuggestion(question, options, answer, `A aula informa: "${plain}".`, `${lesson.id}:${answer}`);
+      }
+
+      const acronymItems = [...line.matchAll(/\*\*([A-ZÀ-ÖØ-Þ])\*\*([a-zà-öø-ÿ][A-Za-zÀ-ÿ'’-]*)/g)]
+        .map((match) => ({ initial: match[1], word: `${match[1]}${match[2]}` }));
+      if (acronymItems.length >= 3) {
+        const acronym = acronymItems.map((item) => item.initial).join('');
+        const answer = acronymItems.map((item) => item.word).join(', ');
+        const options = [answer];
+        for (let offset = 1; offset < acronymItems.length && options.length < 4; offset += 1) {
+          options.push(acronymItems.slice(offset).concat(acronymItems.slice(0, offset)).map((item) => item.word).join(', '));
+        }
+        addSuggestion(
+          `Quais etapas formam a sigla ${acronym}, na ordem apresentada?`,
+          options,
+          answer,
+          `Na aula "${lesson.title}", ${acronym} significa ${answer}.`,
+          `${lesson.id}:${acronym}`
+        );
+      }
     });
+
+    let orderedItems = [];
+    const addOrderedList = () => {
+      if (orderedItems.length >= 3 && orderedItems.every((item, index) => item.number === index + 1)) {
+        orderedItems.forEach((item, index) => {
+          const answer = item.text;
+          const options = [answer, ...orderedItems.filter((_, optionIndex) => optionIndex !== index).map((option) => option.text).slice(0, 4)];
+          addSuggestion(
+            `Qual é o passo ${item.number} do processo apresentado na aula "${lesson.title}"?`,
+            options,
+            answer,
+            `A sequência apresentada na aula é: ${orderedItems.map((option) => option.text).join(' → ')}.`,
+            `${lesson.id}:passo-${item.number}`
+          );
+        });
+      }
+      orderedItems = [];
+    };
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      const item = trimmed.match(/^(\d+)[.)]\s+(.+)$/);
+      if (item) {
+        const number = Number(item[1]);
+        if (orderedItems.length && number !== orderedItems[orderedItems.length - 1].number + 1) addOrderedList();
+        orderedItems.push({ number, text: clean(item[2]).replace(/[.!?;]+$/, '') });
+      } else if (trimmed) addOrderedList();
+    });
+    addOrderedList();
   });
 
-  const candidates = sentences.filter((item, index, all) =>
-    all.findIndex((other) => other.answer.toLocaleLowerCase('pt-BR') === item.answer.toLocaleLowerCase('pt-BR')) === index
-  ).slice(0, 8);
-  const suggestions = candidates.flatMap(({ lesson, text, answer }) => {
-    const distractors = concepts.filter((word) => word.toLocaleLowerCase('pt-BR') !== answer.toLocaleLowerCase('pt-BR')).slice(0, 3);
-    if (distractors.length < 2) return [];
-    const escapedAnswer = answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const question = `Complete conforme a aula "${lesson.title}": ${text.replace(new RegExp(escapedAnswer, 'i'), '_____')}.`;
-    const options = [answer, ...distractors];
-    const seed = [...`${lesson.id}:${answer}`].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    const offset = seed % options.length;
-    const rotated = options.slice(offset).concat(options.slice(0, offset));
-    const correct = rotated.findIndex((option) => option === answer);
-    return [{ q: question, options: rotated, correct, explain: `Conteúdo extraído da aula "${lesson.title}".` }];
-  });
-
-  if (!suggestions.length) fail('Não encontrei texto suficiente para sugerir perguntas. Inclua mais conteúdo nas aulas de texto.');
+  if (!suggestions.length) fail('Não encontrei conteúdo estruturado suficiente para sugerir questões confiáveis. Use quantidades importantes em negrito, siglas como **O**uvir, **R**econhecer, **A**gir, ou processos em listas numeradas com pelo menos 3 passos.');
   return suggestions;
 }
 

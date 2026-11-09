@@ -10,7 +10,9 @@ O perfil permite montar um personagem visual, usado no menu, no perfil e no rank
 
 Os estilos estão divididos em `base`, `navigation`, `components` e `pages`. Os scripts são carregados em ordem e separados em `data`, `security`, `helpers`, `rules`, `demo`, `navigation`, `learner`, `admin` e `events`. Como os scripts são clássicos (não módulos ES), mantenha a ordem das referências no HTML.
 
-No editor da prova, a equipe pode gerar sugestões de múltipla escolha com base no texto das aulas. A geração acontece no navegador, sem serviço externo; revise e salve as perguntas antes de liberá-las. A extração local cria frases de completar com termos do conteúdo, então as alternativas podem precisar de ajustes.
+No editor da prova, a equipe pode gerar sugestões de múltipla escolha localmente, sem enviar o conteúdo a um serviço externo. Para evitar alternativas desconexas, o gerador usa estruturas explícitas: etapas identificadas (por exemplo, `ETAPA 1: PLANEJAMENTO`), quantidades destacadas em negrito, siglas com iniciais destacadas (por exemplo, `**O**uvir, **R**econhecer, **A**gir`) e processos em listas numeradas com pelo menos três passos. Se não encontrar uma dessas estruturas, não cria perguntas. Revise as sugestões e salve-as antes de liberá-las.
+
+Cada pessoa pode escolher entre o tema claro e o tema escuro com degradê em **Minha conta**. O degradê existente é mantido como tema padrão.
 
 ## Segurança: limites atuais e próximos passos
 

@@ -531,14 +531,14 @@ VIEWS.account = () => {
   const u = me();
   app.innerHTML = `<div class="page-head"><h1>Minha conta</h1></div>${u.mustChange ? '<div class="notice">Por segurança, defina uma nova senha para continuar.</div>' : ''}
     <div class="row">${u.mustChange ? '' : `<section class="panel account-profile-panel"><h2>Meus dados</h2><form data-form="profile">${fld('Nome', 'name', u.name, 'required minlength="2"')}${fld('Cargo', 'jobTitle', u.jobTitle)}
-      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}<p class="muted small">A plataforma usa o tema escuro com fundo em degradê.</p><div class="avatar-setup-heading"><strong>Seu personagem</strong><span>Troque o visual quando quiser. A mudança aparece no seu perfil e na plataforma.</span></div>${avatarBuilderHTML(u.avatar)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar alterações</button></form></section>`}
+      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['dark', 'Escuro com degradê (padrão)'], ['light', 'Claro']], u.theme === 'light' ? 'light' : 'dark')}<p class="muted small">O tema afeta apenas sua conta. O degradê azul-escuro permanece como padrão.</p><div class="avatar-setup-heading"><strong>Seu personagem</strong><span>Troque o visual quando quiser. A mudança aparece no seu perfil e na plataforma.</span></div>${avatarBuilderHTML(u.avatar)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar alterações</button></form></section>`}
     <section class="panel"><h2>Alterar senha</h2><form data-form="password"><label>Senha atual<input name="current" type="password" autocomplete="current-password" required></label>
       <label>Nova senha (8+ caracteres, letras e números)<input name="next" type="password" autocomplete="new-password" required minlength="8"></label><button class="btn" type="submit">Salvar senha</button></form></section></div>`;
 };
 FORMS.profile = async (d, form) => {
   const u = me(); if (d.name.trim().length < 2) fail('Informe o nome.');
   const avatar = avatarFromForm(form);
-  const patch = { name: d.name.trim(), job_title: d.jobTitle.trim(), dept: d.dept, theme: 'dark', avatar };
+  const patch = { name: d.name.trim(), job_title: d.jobTitle.trim(), dept: d.dept, theme: d.theme, avatar };
   if (!LOCAL_MODE) {
     const { error } = await backend.from('profiles').update(patch).eq('id', sessionAuthId);
     if (error) fail(error.message);

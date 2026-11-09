@@ -110,7 +110,7 @@ function profileFromRow(row) {
     id: Number(row.internal_id), authId: row.id || row.profile_id, name: row.name || '', email: row.email || '',
     role: row.role || 'aluno', dept: row.dept || '', jobTitle: row.job_title || '', active: row.active !== false,
     pending: !!row.pending, points: Number(row.points) || 0, xp: Number(row.xp) || 0,
-    badges: row.badges || [], theme: 'dark', avatar: row.avatar && Object.keys(row.avatar).length ? normalizeAvatar(row.avatar) : null,
+    badges: row.badges || [], theme: row.theme === 'light' ? 'light' : 'dark', avatar: row.avatar && Object.keys(row.avatar).length ? normalizeAvatar(row.avatar) : null,
     createdAt: Date.parse(row.created_at) || Date.now(),
     lastLogin: row.last_login ? Date.parse(row.last_login) : null, streak: Number(row.streak) || 0,
     lastCheckin: row.last_checkin || null, fails: 0, lockUntil: 0, mustChange: false
@@ -119,7 +119,7 @@ function profileFromRow(row) {
 
 function profileSnapshot(profile, staff = isStaff()) {
   const snapshot = {
-    name: profile.name, dept: profile.dept, jobTitle: profile.jobTitle, theme: 'dark', avatar: profile.avatar || null,
+    name: profile.name, dept: profile.dept, jobTitle: profile.jobTitle, theme: profile.theme, avatar: profile.avatar || null,
     points: profile.points, xp: profile.xp, badges: profile.badges, streak: profile.streak, lastCheckin: profile.lastCheckin
   };
   if (staff) Object.assign(snapshot, { role: profile.role, active: profile.active, pending: profile.pending });
@@ -253,7 +253,7 @@ async function syncProfiles() {
     const previous = profileSnapshots.get(profile.authId);
     if (previous === snapshot) continue;
     const patch = {
-      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: 'dark', avatar: profile.avatar || {},
+      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme === 'light' ? 'light' : 'dark', avatar: profile.avatar || {},
       points: Number(profile.points) || 0, xp: Number(profile.xp) || 0, badges: profile.badges || [],
       streak: Number(profile.streak) || 0, last_checkin: profile.lastCheckin || null
     };

@@ -5,9 +5,9 @@ const app = $('app'), nav = $('nav');
 let mediaUrl = null;
 function stopMedia() { if (mediaUrl?.startsWith('blob:')) URL.revokeObjectURL(mediaUrl); mediaUrl = null; }
 
-// Aplica o tema padrão da plataforma, cor de destaque e nome.
+// Aplica tema, cor de destaque e nome da plataforma.
 function applyTheme() {
-  document.documentElement.dataset.theme = 'dark';
+  document.documentElement.dataset.theme = me()?.theme === 'light' ? 'light' : 'dark';
   const accent = (S.settings.accent || '').toLowerCase();
   document.documentElement.style.setProperty('--brand', accent === '#0b6e5f' ? '#7057f5' : (S.settings.accent || '#7057f5'));
   $('brand').textContent = S.settings.platformName; document.title = S.settings.platformName;
