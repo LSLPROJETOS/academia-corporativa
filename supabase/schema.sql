@@ -14,12 +14,16 @@ create table if not exists public.profiles (
   points integer not null default 0,
   xp integer not null default 0,
   badges jsonb not null default '[]'::jsonb,
+  avatar jsonb not null default '{}'::jsonb,
   theme text not null default 'auto',
   created_at timestamptz not null default now(),
   last_login timestamptz,
   streak integer not null default 0,
   last_checkin date
 );
+
+alter table public.profiles
+  add column if not exists avatar jsonb not null default '{}'::jsonb;
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -28,12 +32,13 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  insert into public.profiles (id, email, name, dept)
+  insert into public.profiles (id, email, name, dept, avatar)
   values (
     new.id,
     lower(coalesce(new.email, '')),
     coalesce(new.raw_user_meta_data ->> 'name', ''),
-    coalesce(new.raw_user_meta_data ->> 'dept', '')
+    coalesce(new.raw_user_meta_data ->> 'dept', ''),
+    coalesce(new.raw_user_meta_data -> 'avatar', '{}'::jsonb)
   )
   on conflict (id) do nothing;
   return new;
@@ -154,7 +159,7 @@ grant select, update on public.profiles to authenticated;
 
 create or replace view public.member_directory as
 select id, internal_id, name, role, dept, job_title, points, xp, badges, theme,
-       created_at, last_login, streak, last_checkin
+       created_at, last_login, streak, last_checkin, avatar
 from public.profiles;
 grant select on public.member_directory to authenticated;
 

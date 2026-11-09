@@ -9,7 +9,7 @@ const AT = {}; // AT[aba] devolve o HTML de cada aba
 VIEWS.admin = async (tab, arg) => {
   need('staff'); tab = tab || 'dashboard';
   const allowed = isAdmin() ? ADMIN_TABS : ADMIN_TABS.filter((t) => STAFF_TABS.includes(t[0])); if (!allowed.some((t) => t[0] === tab)) tab = 'dashboard';
-  app.innerHTML = `<div class="page-head"><h1>${isAdmin() ? 'Administração' : 'Gestão'}</h1></div><div class="tabs">${allowed.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/admin/${k}">${l}</a>`).join('')}</div><div id="admin-body"></div>`;
+  app.innerHTML = `<div class="page-head admin-page-head"><div><span class="eyebrow">ACADEMIA CORPORATIVA</span><h1>${isAdmin() ? 'Gestão do aprendizado' : 'Espaço de gestão'}</h1></div></div><div class="tabs admin-tabs">${allowed.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/admin/${k}">${l}</a>`).join('')}</div><div id="admin-body"></div>`;
   $('admin-body').innerHTML = await AT[tab](arg);
   if (tab === 'data') fillStorage();
 };
@@ -17,21 +17,32 @@ const barChart = (items) => { const max = Math.max(1, ...items.map((i) => i.valu
 
 // ---------- PAINEL ----------
 AT.dashboard = () => {
+  const firstName = me().name.split(' ')[0];
+  const todayLabel = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   const today = todayISO(), active30 = S.users.filter((u) => u.lastLogin && Date.now() - u.lastLogin < 30 * 864e5).length;
   const overdue = S.enrollments.filter((e) => { const c = course(e.courseId), d = c && dueOf(e, c); return d && d < today && !courseProg(e.userId, e.courseId).complete; }).length;
   const given = S.log.filter((l) => l.delta > 0).reduce((s, l) => s + l.delta, 0), pendRed = S.redemptions.filter((r) => r.status === 'pendente').length;
   const rate = S.enrollments.length ? Math.round((S.certificates.length / S.enrollments.length) * 100) : 0;
+  const published = S.courses.filter((c) => c.status === 'publicado').length;
   const days = [...Array(14)].map((_, i) => { const iso = isoOf(new Date(Date.now() - (13 - i) * 864e5)); return { label: iso.slice(8), value: S.progress.filter((p) => isoOf(new Date(p.at)) === iso).length }; });
   const bars = S.courses.map((c) => { const e = S.enrollments.filter((x) => x.courseId === c.id).length, k = S.certificates.filter((x) => x.courseId === c.id).length; return { c, e, k, pct: e ? Math.round((k / e) * 100) : 0 }; }).sort((a, b) => b.e - a.e).slice(0, 8);
   const top = S.users.filter((u) => u.role === 'aluno').sort((a, b) => b.xp - a.xp).slice(0, 5);
-  return `<div class="grid sm" style="margin-bottom:20px">
-      <div class="stat"><b>${S.users.length}</b><span>Usuários (${active30} ativos em 30 dias)</span></div><div class="stat"><b>${S.courses.filter((c) => c.status === 'publicado').length}</b><span>Cursos publicados</span></div>
-      <div class="stat"><b>${S.lessons.length}</b><span>Aulas</span></div><div class="stat"><b>${S.enrollments.length}</b><span>Inscrições</span></div>
-      <div class="stat"><b>${rate}%</b><span>Taxa de conclusão</span></div><div class="stat"><b>${overdue}</b><span>Prazos atrasados</span></div>
-      <div class="stat"><b>${given}</b><span>Pontos distribuídos</span></div><div class="stat"><b>${pendRed}</b><span>Trocas pendentes</span></div></div>
-    <div class="row">${panel(`<h2>Aulas concluídas (14 dias)</h2>${barChart(days)}`)}${panel(`<h2>Conclusão por curso</h2>${bars.length ? bars.map((b) => `<div class="hbar"><span title="${esc(b.c.title)}">${esc(b.c.title.slice(0, 26))}</span><div class="bar"><span style="width:${b.pct}%"></span></div><span>${b.pct}%</span></div>`).join('') : '<p class="muted">Sem cursos.</p>'}`)}</div>
-    <div class="row">${panel(`<h2>Top 5 do ranking</h2>${top.length ? top.map((u, i) => `<div class="spread" style="padding:5px 0"><span>${i + 1}. ${esc(u.name)}</span><strong>${u.xp} XP</strong></div>`).join('') : '<p class="muted">Sem alunos.</p>'}`)}
-      ${panel(`<h2>Atividade recente</h2>${S.audit.slice(-8).reverse().map((a) => `<div class="small" style="padding:3px 0"><span class="muted">${fmtDate(a.at)}</span> · ${esc(user(a.userId)?.name || '—')}: ${esc(a.action)}</div>`).join('') || '<p class="muted">Nada ainda.</p>'}`)}</div>`;
+  const metrics = [
+    ['✳', S.users.length, 'Pessoas cadastradas', `${active30} ativos nos últimos 30 dias`, 'violet'],
+    ['▧', published, 'Cursos publicados', `${S.courses.length} ${S.courses.length === 1 ? 'curso' : 'cursos'} na plataforma`, 'orange'],
+    ['▶', S.lessons.length, 'Aulas disponíveis', 'Conteúdos para aprender', 'blue'],
+    ['↗', S.enrollments.length, 'Inscrições', 'Jornadas de aprendizado', 'green'],
+    ['◌', `${rate}%`, 'Taxa de conclusão', 'Cursos concluídos', 'pink'],
+    ['◷', overdue, 'Prazos atrasados', 'Atenção às pendências', 'yellow'],
+    ['✦', given, 'Pontos distribuídos', 'Reconhecendo cada conquista', 'violet'],
+    ['◇', pendRed, 'Trocas pendentes', 'Pedidos aguardando análise', 'orange']
+  ];
+  return `<section class="dashboard-hero"><div class="dashboard-copy"><span class="eyebrow">${esc(todayLabel)}</span><h2>Olá, ${esc(firstName)}.<br><span>Conhecimento em movimento.</span></h2><p>Um espaço para aprender, crescer e celebrar cada conquista. Veja o que está acontecendo na sua academia.</p><div class="actions"><a class="btn" href="#/admin/courses">Explorar cursos <span aria-hidden="true">→</span></a><a class="dashboard-link" href="#/admin/reports">Acompanhar resultados <span aria-hidden="true">↗</span></a></div></div><div class="dashboard-art" aria-hidden="true"><div class="art-sun"></div><div class="art-orbit orbit-a"></div><div class="art-orbit orbit-b"></div><span class="art-star star-a">✳</span><span class="art-star star-b">✦</span><div class="art-note"><strong>${published}</strong><span>cursos para<br>ir mais longe</span></div></div></section>
+    <div class="section-heading dashboard-section-heading"><div><span class="eyebrow">UM OLHAR GERAL</span><h2>Sua academia em números</h2></div><span class="muted small">Atualizado agora</span></div>
+    <div class="grid admin-stats">${metrics.map(([icon, value, label, detail, tone]) => `<article class="stat admin-stat tone-${tone}"><span class="stat-icon" aria-hidden="true">${icon}</span><b>${value}</b><span class="stat-label">${label}</span><small>${detail}</small></article>`).join('')}</div>
+    <div class="row dashboard-charts">${panel(`<div class="panel-heading"><div><span class="eyebrow">RITMO DE APRENDIZADO</span><h2>Aulas concluídas</h2></div><span class="chart-period">ÚLTIMOS 14 DIAS</span></div>${barChart(days)}`)}${panel(`<div class="panel-heading"><div><span class="eyebrow">PROGRESSO</span><h2>Conclusão por curso</h2></div></div>${bars.length ? bars.map((b) => `<div class="hbar"><span title="${esc(b.c.title)}">${esc(b.c.title.slice(0, 26))}</span><div class="bar"><span style="width:${b.pct}%"></span></div><span>${b.pct}%</span></div>`).join('') : '<p class="muted">Sem cursos.</p>'}`)}</div>
+    <div class="row dashboard-lower">${panel(`<div class="panel-heading"><div><span class="eyebrow">GENTE QUE INSPIRA</span><h2>Top 5 do ranking</h2></div><a class="dashboard-link" href="#/ranking">Ver ranking ↗</a></div>${top.length ? top.map((u, i) => `<div class="spread ranking-row"><span><i>${String(i + 1).padStart(2, '0')}</i>${esc(u.name)}</span><strong>${u.xp} XP</strong></div>`).join('') : '<p class="muted">Sem alunos.</p>'}`)}
+      ${panel(`<div class="panel-heading"><div><span class="eyebrow">O QUE ESTÁ ACONTECENDO</span><h2>Atividade recente</h2></div></div>${S.audit.slice(-8).reverse().map((a) => `<div class="activity-row"><span class="muted small">${fmtDate(a.at)}</span><span><strong>${esc(user(a.userId)?.name || '—')}</strong> · ${esc(a.action)}</span></div>`).join('') || '<p class="muted">Nada ainda.</p>'}`)}</div>`;
 };
 
 // ---------- USUÁRIOS ----------
@@ -293,7 +304,7 @@ ACTIONS['announce-del'] = (d) => { need('staff'); S.announcements = S.announceme
 // ---------- CONFIGURAÇÕES (regras de pontos, aparência, cadastro) ----------
 AT.settings = () => {
   const s = S.settings;
-  return panel(`<h2>Configurações da plataforma</h2><form data-form="settings"><div class="row">${fld('Nome da plataforma', 'platformName', s.platformName, 'required')}<label>Cor de destaque<input type="color" name="accent" value="${s.accent}"></label></div>
+  return panel(`<h2>Configurações da plataforma</h2><form data-form="settings"><div class="row">${fld('Nome da plataforma', 'platformName', s.platformName, 'required')}<label>Cor de destaque<input type="color" name="accent" value="${s.accent === '#0b6e5f' ? '#7057f5' : s.accent}"></label></div>
     ${chk('Permitir que pessoas se cadastrem sozinhas', 'openSignup', s.openSignup)}${chk('Exigir aprovação do administrador para novos cadastros', 'requireApproval', s.requireApproval)}
     <h3 style="margin-top:16px">Regras de pontos</h3><div class="row">${fld('Pontos padrão por aula (novas aulas)', 'pointsPerLesson', s.pointsPerLesson, 'type="number" min="0"')}${fld('Bônus padrão ao concluir curso', 'courseBonus', s.courseBonus, 'type="number" min="0"')}${fld('Pontos padrão por aprovação em prova', 'quizPassBonus', s.quizPassBonus, 'type="number" min="0"')}</div>
     <div class="row">${fld('Pontos do check-in diário', 'dailyBonus', s.dailyBonus, 'type="number" min="0"')}${fld('Bônus a cada 7 dias seguidos', 'streak7Bonus', s.streak7Bonus, 'type="number" min="0"')}${fld('XP por nível (base da curva)', 'levelStep', s.levelStep, 'type="number" min="10"')}${fld('% mínimo assistido para concluir vídeo', 'minWatchPct', s.minWatchPct, 'type="number" min="10" max="100"')}</div>
@@ -301,7 +312,7 @@ AT.settings = () => {
 };
 FORMS.settings = (d) => {
   need('admin'); const n = (k, min = 0) => Math.max(min, Math.trunc(Number(d[k])) || 0);
-  Object.assign(S.settings, { platformName: d.platformName.trim() || 'Academia Corporativa', accent: /^#[0-9a-f]{6}$/i.test(d.accent) ? d.accent : '#0b6e5f', openSignup: d.openSignup === 'on', requireApproval: d.requireApproval === 'on',
+  Object.assign(S.settings, { platformName: d.platformName.trim() || 'Academia Corporativa', accent: /^#[0-9a-f]{6}$/i.test(d.accent) ? d.accent : '#7057f5', openSignup: d.openSignup === 'on', requireApproval: d.requireApproval === 'on',
     pointsPerLesson: n('pointsPerLesson'), courseBonus: n('courseBonus'), quizPassBonus: n('quizPassBonus'), dailyBonus: n('dailyBonus'), streak7Bonus: n('streak7Bonus'), levelStep: n('levelStep', 10) || 100, minWatchPct: Math.min(100, n('minWatchPct', 10)) });
   audit('Configurações alteradas'); save(); applyTheme(); toast('Configurações salvas.'); rerender();
 };

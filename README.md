@@ -9,6 +9,8 @@ As duas páginas existentes foram mantidas porque são versões diferentes da pl
 - `supabase/schema.sql` define o banco, as políticas RLS e o Storage.
 - `supabase/bootstrap-admin.sql` é executado manualmente no Supabase para configurar a primeira conta administrativa.
 
+O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para adicionar a coluna JSONB `profiles.avatar`; o cadastro e a edição do personagem precisam dessa atualização.
+
 Os estilos estão divididos em `base`, `navigation`, `components` e `pages`. Os scripts são carregados em ordem e separados em `data`, `security`, `helpers`, `rules`, `demo`, `navigation`, `learner`, `admin` e `events`. Como os scripts são clássicos (não módulos ES), mantenha a ordem das referências no HTML.
 
 As duas versões não compartilham os módulos porque seus recursos e implementação divergem. Ao corrigir uma delas, avalie se a mesma mudança também é necessária na outra.
