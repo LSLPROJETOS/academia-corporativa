@@ -322,7 +322,7 @@ as $$
   cross join period_start
   left join public.app_records as entry
     on entry.collection = 'log'
-    and entry.payload ->> 'userId' = profile.internal_id::text
+    and entry.owner_id = profile.id
     and entry.payload ? 'at'
     and to_timestamp((entry.payload ->> 'at')::double precision / 1000) <= now()
     and coalesce(entry.payload ->> 'reason', '') not like 'Estorno:%'

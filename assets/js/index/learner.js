@@ -473,7 +473,7 @@ VIEWS.ranking = async () => {
     const score = f.scope === 'geral' ? x.xp : f.scope === 'mes' ? periods.month : periods.week;
     return { x, score };
   }).sort((a, b) => b.score - a.score || b.x.xp - a.x.xp || a.x.name.localeCompare(b.x.name, 'pt-BR'));
-  const medals = ['🥇', '🥈', '🥉'];
+  const medal = (place, compact = false) => `<span class="rank-medal rank-medal-${place} ${compact ? 'compact' : ''}" role="img" aria-label="${place}º lugar"><span class="medal-ribbon" aria-hidden="true"></span><span class="medal-face" aria-hidden="true">★</span></span>`;
   const period = f.scope === 'geral' ? 'Todo o período' : f.scope === 'mes' ? 'Este mês' : 'Esta semana';
   const top = leaders.slice(0, 3), podium = [top[1], top[0], top[2]].filter(Boolean);
   if (rankingRefreshTimer) clearInterval(rankingRefreshTimer);
@@ -492,11 +492,11 @@ VIEWS.ranking = async () => {
     </div>${fsel('Departamento', 'R.dept', [['', 'Todos os departamentos'], ...S.depts.map((d) => [d, d])], f.dept)}</section>
     <div class="ranking-period-note"><span class="ranking-period-icon">◷</span><span><strong>${period}</strong> · ${f.scope === 'semana' ? 'a semana recomeça automaticamente toda segunda-feira' : f.scope === 'mes' ? 'o placar reinicia automaticamente no primeiro dia do mês' : 'XP acumulado desde o início'}</span><span class="ranking-reset">Atualização automática a cada minuto</span></div>
     ${leaders.length ? `${top.length ? `<section class="ranking-podium" aria-label="Pódio da ${period.toLowerCase()}">${podium.map((r) => {
-      const place = leaders.indexOf(r) + 1, medalIndex = place - 1;
-      return `<article class="podium-card place-${place} ${r.x.id === u.id ? 'current-user' : ''}"><span class="podium-medal medal-${place}" aria-label="${place}º lugar">${medals[medalIndex]}</span>${avatar(r.x, 'lg')}<strong class="podium-name">${esc(r.x.name)}</strong><span class="podium-dept">${esc(r.x.dept || 'Sem departamento')}</span><b class="podium-score">${r.score.toLocaleString('pt-BR')} <small>XP</small></b><span class="podium-level">Nível ${levelInfo(r.x.xp).level}</span><div class="podium-base"><span>${String(place).padStart(2, '0')}</span></div></article>`;
+      const place = leaders.indexOf(r) + 1;
+      return `<article class="podium-card place-${place} ${r.x.id === u.id ? 'current-user' : ''}">${medal(place)}${avatar(r.x, 'lg')}<strong class="podium-name">${esc(r.x.name)}</strong><span class="podium-dept">${esc(r.x.dept || 'Sem departamento')}</span><b class="podium-score">${r.score.toLocaleString('pt-BR')} <small>XP</small></b><span class="podium-level">Nível ${levelInfo(r.x.xp).level}</span><div class="podium-base"><span>${String(place).padStart(2, '0')}</span></div></article>`;
     }).join('')}</section>` : ''}
     <section class="ranking-list panel"><div class="ranking-list-heading"><div><span class="eyebrow">PLACAR COMPLETO</span><h2>Todos os participantes</h2></div><span>${leaders.length} ${leaders.length === 1 ? 'participante' : 'participantes'}</span></div><div class="table-wrap"><table><thead><tr><th>Posição</th><th>Participante</th><th>Departamento</th><th>Nível</th><th>${f.scope === 'geral' ? 'XP total' : 'XP no período'}</th></tr></thead><tbody>
-      ${leaders.map((r, i) => `<tr class="${r.x.id === u.id ? 'me ranking-me' : ''}"><td><span class="ranking-position ${i < 3 ? `rank-${i + 1}` : ''}">${i < 3 ? medals[i] : String(i + 1).padStart(2, '0')}</span></td><td><span class="ranking-person">${avatar(r.x, 'sm')}<strong>${esc(r.x.name)}${r.x.id === u.id ? '<small>Você</small>' : ''}</strong></span></td><td>${esc(r.x.dept || '—')}</td><td><span class="ranking-level">${levelInfo(r.x.xp).level}</span></td><td><strong class="ranking-xp">${r.score.toLocaleString('pt-BR')} <small>XP</small></strong></td></tr>`).join('')}
+      ${leaders.map((r, i) => `<tr class="${r.x.id === u.id ? 'me ranking-me' : ''}"><td>${i < 3 ? medal(i + 1, true) : `<span class="ranking-position">${String(i + 1).padStart(2, '0')}</span>`}</td><td><span class="ranking-person">${avatar(r.x, 'sm')}<strong>${esc(r.x.name)}${r.x.id === u.id ? '<small>Você</small>' : ''}</strong></span></td><td>${esc(r.x.dept || '—')}</td><td><span class="ranking-level">${levelInfo(r.x.xp).level}</span></td><td><strong class="ranking-xp">${r.score.toLocaleString('pt-BR')} <small>XP</small></strong></td></tr>`).join('')}
     </tbody></table></div></section>` : '<div class="panel empty">Ainda não há participantes neste ranking.</div>'}
   </div>`;
 };
@@ -531,7 +531,7 @@ VIEWS.account = () => {
   const u = me();
   app.innerHTML = `<div class="page-head"><h1>Minha conta</h1></div>${u.mustChange ? '<div class="notice">Por segurança, defina uma nova senha para continuar.</div>' : ''}
     <div class="row">${u.mustChange ? '' : `<section class="panel account-profile-panel"><h2>Meus dados</h2><form data-form="profile">${fld('Nome', 'name', u.name, 'required minlength="2"')}${fld('Cargo', 'jobTitle', u.jobTitle)}
-      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['light', 'Claro (recomendado)'], ['dark', 'Escuro']], u.theme === 'dark' ? 'dark' : 'light')}<div class="avatar-setup-heading"><strong>Seu personagem</strong><span>Troque o visual quando quiser. A mudança aparece no seu perfil e na plataforma.</span></div>${avatarBuilderHTML(u.avatar)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar alterações</button></form></section>`}
+      ${sel('Departamento', 'dept', [['', 'Nenhum'], ...S.depts.map((d) => [d, d])], u.dept)}${sel('Tema', 'theme', [['dark', 'Escuro (recomendado)'], ['light', 'Claro']], u.theme === 'light' ? 'light' : 'dark')}<div class="avatar-setup-heading"><strong>Seu personagem</strong><span>Troque o visual quando quiser. A mudança aparece no seu perfil e na plataforma.</span></div>${avatarBuilderHTML(u.avatar)}<p class="muted small">E-mail: ${esc(u.email)}</p><button class="btn" type="submit">Salvar alterações</button></form></section>`}
     <section class="panel"><h2>Alterar senha</h2><form data-form="password"><label>Senha atual<input name="current" type="password" autocomplete="current-password" required></label>
       <label>Nova senha (8+ caracteres, letras e números)<input name="next" type="password" autocomplete="new-password" required minlength="8"></label><button class="btn" type="submit">Salvar senha</button></form></section></div>`;
 };

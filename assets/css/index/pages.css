@@ -592,3 +592,125 @@ dialog{border-radius:20px;box-shadow:0 24px 80px rgba(22,16,48,.22)}
   .ranking-person .avatar.sm{width:24px;height:24px}
   .ranking-person strong{font-size:.68rem}
 }
+
+/* Medalhas CSS do pódio e das posições do ranking. */
+.rank-medal{--medal-main:#e9ad32;--medal-shadow:#a96b14;position:relative;display:inline-grid;place-items:center;width:46px;height:53px;flex:none;margin:-2px 0 5px}
+.medal-ribbon{position:absolute;z-index:0;top:27px;left:50%;width:29px;height:25px;background:linear-gradient(90deg,var(--medal-shadow),var(--medal-main),var(--medal-shadow));clip-path:polygon(0 0,100% 0,84% 100%,50% 77%,16% 100%);transform:translateX(-50%)}
+.medal-face{position:relative;z-index:1;display:grid;place-items:center;width:37px;height:37px;border:3px solid rgba(255,255,255,.82);border-radius:50%;background:radial-gradient(circle at 34% 25%,color-mix(in srgb,var(--medal-main) 38%,white),var(--medal-main) 58%,var(--medal-shadow));color:#fff8df;font-size:1rem;text-shadow:0 1px 3px rgba(0,0,0,.35);box-shadow:0 4px 11px color-mix(in srgb,var(--medal-shadow) 35%,transparent),inset 0 0 0 1px rgba(255,255,255,.45)}
+.rank-medal-2{--medal-main:#aebbd0;--medal-shadow:#66778f}
+.rank-medal-3{--medal-main:#cb8b62;--medal-shadow:#875138}
+.rank-medal.compact{width:29px;height:31px;margin:0}
+.rank-medal.compact .medal-ribbon{top:17px;width:19px;height:15px}
+.rank-medal.compact .medal-face{width:25px;height:25px;border-width:2px;font-size:.66rem}
+
+/* Fundo noturno azul-marinho, mantendo os cartões e textos legíveis. */
+[data-theme=dark] .topbar{background:color-mix(in srgb,#080c17 84%,transparent)}
+[data-theme=dark] .chip.coins{background:rgba(216,243,106,.13);color:#e7f2ab}
+[data-theme=dark] .learning-hero{background:radial-gradient(ellipse at 86% 22%,rgba(139,123,255,.28),transparent 34%),linear-gradient(115deg,#292451,#1b2845 58%,#123b42);box-shadow:0 20px 55px rgba(0,0,0,.2)}
+[data-theme=dark] .learning-hero,[data-theme=dark] .learning-hero h1{color:#f5f6ff}
+[data-theme=dark] .learning-hero .eyebrow,[data-theme=dark] .learning-hero h1 span{color:#d8f36a}
+[data-theme=dark] .learning-hero .hero-subtitle,[data-theme=dark] .hero-progress .spread{color:rgba(245,246,255,.78)}
+[data-theme=dark] .hero-progress .bar{background:rgba(255,255,255,.2)}
+[data-theme=dark] .hero-actions{border-color:rgba(255,255,255,.18);background:rgba(9,13,28,.44);box-shadow:0 12px 32px rgba(0,0,0,.16)}
+[data-theme=dark] .hero-streak,[data-theme=dark] .hero-store-link{color:#f5f6ff}
+[data-theme=dark] .auth-story{background:linear-gradient(145deg,#292451,#1c2948 67%,#16434a);color:#f5f6ff}
+[data-theme=dark] .auth-story>.eyebrow,[data-theme=dark] .auth-story h1 span{color:#d8f36a}
+[data-theme=dark] .auth-story>p,[data-theme=dark] .auth-note{color:rgba(245,246,255,.78)}
+[data-theme=dark] .auth-note strong{color:#fff}
+[data-theme=dark] .auth-orbit{border-color:rgba(255,255,255,.16)}
+[data-theme=dark] .auth-orbit-one{box-shadow:0 0 0 35px rgba(255,255,255,.035),0 0 0 70px rgba(255,255,255,.025)}
+[data-theme=dark] .auth.panel{box-shadow:0 12px 44px rgba(0,0,0,.22)}
+[data-theme=dark] .admin-tabs a:hover{background:var(--soft)}
+[data-theme=dark] .dashboard-hero{background:linear-gradient(112deg,#30264f 0%,#202844 57%,#153b42 100%)}
+[data-theme=dark] .dashboard-copy .eyebrow{color:#c4b8ff}
+[data-theme=dark] .dashboard-copy h2,[data-theme=dark] .dashboard-copy>p{color:#f2f4ff}
+[data-theme=dark] .dashboard-copy h2 span{color:#d8f36a}
+[data-theme=dark] .dashboard-link{color:#d9def3}
+[data-theme=dark] .dashboard-copy .btn{background:#d8f36a;border-color:#d8f36a;color:#202134}
+[data-theme=dark] .dashboard-copy .btn:hover{background:#e5ff83;border-color:#e5ff83}
+[data-theme=dark] .art-orbit{border-color:rgba(225,227,255,.23)}
+[data-theme=dark] .art-note{border-color:rgba(255,255,255,.18);background:rgba(12,17,34,.86);box-shadow:0 12px 30px rgba(0,0,0,.24);backdrop-filter:blur(12px)}
+[data-theme=dark] .art-note strong{color:#c4b8ff}
+[data-theme=dark] .art-note span{color:#e2e6f4}
+[data-theme=dark] .admin-stat{border-color:var(--line);background:var(--panel);color:var(--ink);box-shadow:0 8px 26px rgba(0,0,0,.12)}
+[data-theme=dark] .admin-stat .stat-label{color:var(--ink)}
+[data-theme=dark] .admin-stat small{color:var(--muted)}
+[data-theme=dark] .dashboard-charts>.panel,[data-theme=dark] .dashboard-lower>.panel{border-color:var(--line);box-shadow:0 8px 28px rgba(0,0,0,.12)}
+[data-theme=dark] .hbar .bar{background:#29334a}
+[data-theme=dark] .ranking-row i{background:rgba(139,123,255,.17);color:#c4b8ff}
+[data-theme=dark] .ranking-row strong{color:#c4b8ff}
+[data-theme=dark] .catalog-banner{background:linear-gradient(112deg,#172f3b 0%,#202844 48%,#302750 100%);color:#f2f4ff}
+[data-theme=dark] .catalog-banner h1,[data-theme=dark] .catalog-proof strong{color:#f2f4ff}
+[data-theme=dark] .catalog-kicker{color:#9fe0d1}
+[data-theme=dark] .catalog-banner-copy>p,[data-theme=dark] .catalog-proof{color:#c0c9dc}
+[data-theme=dark] .catalog-proof-mark{background:#26344f;color:#c4b8ff}
+[data-theme=dark] .catalog-art-ring{border-color:rgba(220,225,255,.3)}
+[data-theme=dark] .catalog-art-ring::after{border-color:rgba(220,225,255,.2)}
+[data-theme=dark] .catalog-art-spark{color:#d3c8ff}
+[data-theme=dark] .catalog-art-word{color:rgba(220,225,255,.16)}
+[data-theme=dark] .catalog-create{background:#d8f36a;border-color:#d8f36a;color:#202134}
+[data-theme=dark] .catalog-create:hover{background:#e5ff83;border-color:#e5ff83}
+[data-theme=dark] .catalog-search,[data-theme=dark] .course-filters>summary,[data-theme=dark] .course-filter-grid{border-color:var(--line);background:var(--panel);color:var(--ink);box-shadow:0 8px 22px rgba(0,0,0,.14)}
+[data-theme=dark] .course-filters>summary span,[data-theme=dark] .catalog-search>span{color:#c4b8ff}
+[data-theme=dark] .catalog-results-heading h2{color:var(--ink)}
+[data-theme=dark] .course-card{border-color:var(--line);background:var(--panel);color:var(--ink);box-shadow:0 7px 24px rgba(0,0,0,.18)}
+[data-theme=dark] .course-card h2,[data-theme=dark] .course-card h3,[data-theme=dark] .course-card p,[data-theme=dark] .course-card strong,[data-theme=dark] .course-card .course-description{color:var(--ink)}
+[data-theme=dark] .course-card .muted,[data-theme=dark] .course-card small{color:var(--muted)}
+[data-theme=dark] .avatar-builder{border-color:var(--line);background:linear-gradient(135deg,#141b2c,#172536)}
+[data-theme=dark] .avatar-preview{border-color:var(--line);background:#101827;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+[data-theme=dark] .avatar-preview>strong,[data-theme=dark] .avatar-choice-group legend,[data-theme=dark] .avatar-setup-heading strong{color:var(--ink)}
+[data-theme=dark] .avatar-preview>span,[data-theme=dark] .avatar-setup-heading span{color:var(--muted)}
+[data-theme=dark] .avatar-choice{color:var(--ink)}
+[data-theme=dark] .avatar-choice.selected{box-shadow:0 0 0 2px var(--panel),0 0 0 4px rgba(139,123,255,.28)}
+[data-theme=dark] .avatar-symbol{background:#202a3d}
+[data-theme=dark] .avatar-symbol span{background:#202a3d}
+[data-theme=dark] .achievement-heading h2{color:var(--ink)}
+[data-theme=dark] .achievement-heading p{color:var(--muted)}
+[data-theme=dark] .achievement-total{border-color:var(--line);background:var(--panel);color:var(--muted)}
+[data-theme=dark] .achievement-card{border-color:var(--line);background:linear-gradient(180deg,#151d2d,#101725);box-shadow:0 7px 22px rgba(0,0,0,.18)}
+[data-theme=dark] .achievement-card.earned{border-color:color-mix(in srgb,var(--medal-a) 40%,var(--line));background:linear-gradient(180deg,color-mix(in srgb,var(--medal-a) 17%,#151d2d),#101725 78%)}
+[data-theme=dark] .achievement-card>strong{color:var(--ink)}
+[data-theme=dark] .achievement-card>.small{color:var(--muted)}
+[data-theme=dark] .badge-check{border-color:#151d2d;background:#29334a;color:#d4d8e6}
+[data-theme=dark] .achievement-card.locked .badge-medal{border-color:#273147}
+[data-theme=dark] .ranking-heading h1{color:var(--ink)}
+[data-theme=dark] .ranking-heading p,[data-theme=dark] .ranking-period-note{color:var(--muted)}
+[data-theme=dark] .ranking-live{border-color:#285144;background:#142b28;color:#a6e2c6}
+[data-theme=dark] .ranking-period-tabs{background:#0b1220}
+[data-theme=dark] .ranking-period-tabs button{color:#a6aec4}
+[data-theme=dark] .ranking-period-tabs button:hover{color:#d3c8ff}
+[data-theme=dark] .ranking-period-tabs button.active{background:#27304a;color:#e3ddff;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+[data-theme=dark] .ranking-filters>label{color:#c0c9dc}
+[data-theme=dark] .ranking-filters select{background-color:var(--panel)}
+[data-theme=dark] .ranking-period-note strong{color:#e8eaff}
+[data-theme=dark] .ranking-period-icon{background:rgba(139,123,255,.18);color:#c4b8ff}
+[data-theme=dark] .podium-card{border-color:var(--line);background:linear-gradient(180deg,#172033,#111827);box-shadow:0 8px 25px rgba(0,0,0,.22)}
+[data-theme=dark] .podium-card::before{background:linear-gradient(90deg,#39435a,#74809b,#39435a)}
+[data-theme=dark] .podium-card.place-1{border-color:#826b37;background:radial-gradient(ellipse at 50% 0%,rgba(234,169,50,.17),transparent 62%),linear-gradient(180deg,#242536,#151a27);box-shadow:0 12px 32px rgba(0,0,0,.25)}
+[data-theme=dark] .podium-card .avatar.lg{border-color:#30394d}
+[data-theme=dark] .podium-name,[data-theme=dark] .podium-score{color:var(--ink)}
+[data-theme=dark] .podium-dept,[data-theme=dark] .podium-score small,[data-theme=dark] .podium-level{color:var(--muted)}
+[data-theme=dark] .podium-base{background:linear-gradient(90deg,#273047,#1d273b,#273047);color:#c0c9dc}
+[data-theme=dark] .place-1 .podium-score{color:#f2c866}
+[data-theme=dark] .place-1 .podium-base{background:linear-gradient(90deg,#4a3b20,#554520,#4a3b20);color:#f2c866}
+[data-theme=dark] .place-2 .podium-base{background:linear-gradient(90deg,#293448,#35435a,#293448);color:#c2ccdc}
+[data-theme=dark] .place-3 .podium-base{background:linear-gradient(90deg,#3d2e2a,#49352d,#3d2e2a);color:#d9a681}
+[data-theme=dark] .ranking-list-heading h2{color:var(--ink)}
+[data-theme=dark] .ranking-list-heading>span{background:#202a3d;color:var(--muted)}
+[data-theme=dark] .ranking-list th{color:#a6aec4}
+[data-theme=dark] .ranking-list td{border-color:var(--line);color:#c0c9dc}
+[data-theme=dark] .ranking-list tbody tr:hover{background:#182236}
+[data-theme=dark] .ranking-list tbody tr.ranking-me{background:linear-gradient(90deg,rgba(139,123,255,.16),rgba(17,24,39,.2))}
+[data-theme=dark] .ranking-position{background:#202a3d;color:#c0c9dc}
+[data-theme=dark] .ranking-position.rank-1{background:#493b20;color:#f2c866}
+[data-theme=dark] .ranking-position.rank-2{background:#293448;color:#c2ccdc}
+[data-theme=dark] .ranking-position.rank-3{background:#3d2e2a;color:#d9a681}
+[data-theme=dark] .ranking-person strong{color:var(--ink)}
+[data-theme=dark] .ranking-person strong small{background:rgba(139,123,255,.2);color:#d3c8ff}
+[data-theme=dark] .ranking-level{border-color:var(--line);background:#172033;color:#c0c9dc}
+[data-theme=dark] .ranking-xp{color:#c4b8ff}
+[data-theme=dark] .ranking-xp small{color:var(--muted)}
+
+@media print{
+  [data-theme=dark] body{background:#fff}
+}
