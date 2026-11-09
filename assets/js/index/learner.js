@@ -110,6 +110,17 @@ function courseCard(c, u, featured = false) {
 }
 ACTIONS.go = (d) => { location.hash = d.href; };
 ACTIONS.fav = (d) => { const u = me(), id = Number(d.id); S.favorites = isFav(u.id, id) ? S.favorites.filter((f) => !(f.userId === u.id && f.courseId === id)) : [...S.favorites, { userId: u.id, courseId: id }]; save(); rerender(); };
+function refreshAvatarBuilder(builder, form) {
+  const avatar = avatarFromForm(form);
+  builder.querySelector('.avatar-preview-art').innerHTML = avatarSVG(avatar);
+  builder.querySelectorAll('.avatar-choice').forEach((choice) => {
+    const selected = avatar[choice.dataset.key] === choice.dataset.value;
+    choice.classList.toggle('selected', selected);
+    choice.setAttribute('aria-pressed', String(selected));
+    const optionArt = choice.querySelector('.avatar-option-art');
+    if (optionArt) optionArt.innerHTML = avatarSVG({ ...avatar, [choice.dataset.key]: choice.dataset.value });
+  });
+}
 ACTIONS['avatar-pick'] = (d, el) => {
   if (!Object.hasOwn(AVATAR_OPTIONS, d.key)) fail('Esta opção de personagem não existe.');
   const option = AVATAR_OPTIONS[d.key].find(([id]) => id === d.value);
@@ -119,13 +130,15 @@ ACTIONS['avatar-pick'] = (d, el) => {
   const input = form.elements[`avatar_${d.key}`];
   if (!input) fail('Campo do personagem não encontrado.');
   input.value = d.value;
-  const choices = el.parentElement.querySelectorAll('.avatar-choice');
-  choices.forEach((choice) => {
-    const selected = choice === el;
-    choice.classList.toggle('selected', selected);
-    choice.setAttribute('aria-pressed', String(selected));
+  refreshAvatarBuilder(builder, form);
+};
+ACTIONS['avatar-randomize'] = (d, el) => {
+  const builder = el.closest('.avatar-builder'), form = el.closest('form');
+  if (!builder || !form) fail('Não foi possível sortear o personagem.');
+  Object.entries(AVATAR_OPTIONS).forEach(([key, options]) => {
+    form.elements[`avatar_${key}`].value = options[Math.floor(Math.random() * options.length)][0];
   });
-  builder.querySelector('.avatar-preview-art').innerHTML = avatarSVG(avatarFromForm(form));
+  refreshAvatarBuilder(builder, form);
 };
 
 // Biblioteca central: lista vídeos dos cursos acessíveis e abre a aula selecionada.
