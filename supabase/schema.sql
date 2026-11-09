@@ -294,6 +294,46 @@ grant select, insert, update, delete on public.app_records to authenticated;
 grant select on public.app_records to anon;
 grant usage, select on sequence public.app_records_id_seq to authenticated;
 
+create or replace function public.ranking_xp()
+returns table (user_id bigint, weekly_xp bigint, monthly_xp bigint)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  with period_start as (
+    select
+      date_trunc('week', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo' as week_start,
+      date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo' as month_start
+  )
+  select
+    profile.internal_id,
+    coalesce(
+      sum(greatest(coalesce((entry.payload ->> 'delta')::integer, 0), 0))
+        filter (where to_timestamp((entry.payload ->> 'at')::double precision / 1000) >= period_start.week_start),
+      0
+    )::bigint,
+    coalesce(
+      sum(greatest(coalesce((entry.payload ->> 'delta')::integer, 0), 0))
+        filter (where to_timestamp((entry.payload ->> 'at')::double precision / 1000) >= period_start.month_start),
+      0
+    )::bigint
+  from public.profiles as profile
+  cross join period_start
+  left join public.app_records as entry
+    on entry.collection = 'log'
+    and entry.payload ->> 'userId' = profile.internal_id::text
+    and entry.payload ? 'at'
+    and to_timestamp((entry.payload ->> 'at')::double precision / 1000) <= now()
+    and coalesce(entry.payload ->> 'reason', '') not like 'Estorno:%'
+  where profile.role = 'aluno'
+    and profile.active
+    and not profile.pending
+  group by profile.internal_id;
+$$;
+revoke all on function public.ranking_xp() from public, anon;
+grant execute on function public.ranking_xp() to authenticated;
+
 create or replace function public.verify_course_certificate(p_code text)
 returns table (
   valid boolean,

@@ -160,5 +160,5 @@ function generateQuizSuggestions(courseId) {
 // Tabelas de ações (cliques) e de formulários. São preenchidas nas seções 7, 8 e 9.
 const FORMS = {}, ACTIONS = {}, VIEWS = {};
 // Filtros digitáveis de cada tela (C=cursos, U=usuários, S=loja, R=ranking, X=relatórios) e como atualizar a lista.
-const FILTERS = { C: { q: '', cat: '', area: '', level: '', status: '', sort: 'recent' }, U: { q: '', role: '', dept: '', status: '' }, S: { q: '', cat: '', afford: false }, R: { scope: 'geral', dept: '' }, X: { course: '' } };
+const FILTERS = { C: { q: '', cat: '', area: '', level: '', status: '', sort: 'recent' }, U: { q: '', role: '', dept: '', status: '' }, S: { q: '', cat: '', afford: false }, R: { scope: 'semana', dept: '' }, X: { course: '' } };
 const REFRESH = {};

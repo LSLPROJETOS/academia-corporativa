@@ -442,17 +442,67 @@ ACTIONS.redeem = (d) => {
 ACTIONS['redeem-cancel-mine'] = (d) => { const r = S.redemptions.find((x) => x.id === Number(d.id) && x.userId === me().id); if (!r || r.status !== 'pendente') fail('Só dá para cancelar pedidos pendentes.'); if (!confirm('Cancelar esta troca e receber os pontos de volta?')) return; cancelRedemption(r, 'Cancelado pelo usuário'); save(); renderChrome(); rerender(); };
 
 // ---------- RANKING ----------
+let rankingRefreshTimer = null;
 REFRESH.R = () => rerender();
-VIEWS.ranking = () => {
-  const u = me(), f = FILTERS.R, ms = new Date(); ms.setDate(1); ms.setHours(0, 0, 0, 0);
-  let L = S.users.filter((x) => x.active && !x.pending && x.role === 'aluno' && (!f.dept || x.dept === f.dept));
-  L = L.map((x) => ({ x, score: f.scope === 'mes' ? S.log.filter((l) => l.userId === x.id && l.delta > 0 && l.at >= ms.getTime()).reduce((s, l) => s + l.delta, 0) : x.xp })).sort((a, b) => b.score - a.score);
-  const medal = ['🥇', '🥈', '🥉'];
-  app.innerHTML = `<div class="page-head"><h1>Ranking</h1></div>
-    <div class="panel"><div class="row">${fsel('Período', 'R.scope', [['geral', 'Geral (todo o tempo)'], ['mes', 'Este mês']], f.scope)}${fsel('Departamento', 'R.dept', [['', 'Todos'], ...S.depts.map((d) => [d, d])], f.dept)}</div></div>
-    ${L.length ? `<div class="grid sm" style="margin-bottom:20px">${L.slice(0, 3).map((r, i) => `<div class="stat" style="text-align:center"><div style="font-size:2rem">${medal[i]}</div>${avatar(r.x, 'lg')}<h3 style="margin-top:8px">${esc(r.x.name)}</h3><b>${r.score} XP</b><span>${esc(r.x.dept || '')}</span></div>`).join('')}</div>
-    <div class="panel table-wrap"><table><tr><th>#</th><th>Nome</th><th>Departamento</th><th>Nível</th><th>XP</th></tr>
-      ${L.map((r, i) => `<tr class="${r.x.id === u.id ? 'me' : ''}"><td>${i + 1}</td><td>${avatar(r.x, 'sm')} ${esc(r.x.name)}</td><td>${esc(r.x.dept || '—')}</td><td>${levelInfo(r.x.xp).level}</td><td><strong>${r.score}</strong></td></tr>`).join('')}</table></div>` : '<div class="panel empty">Ainda não há participantes no ranking.</div>'}`;
+VIEWS.ranking = async () => {
+  const u = me(), f = FILTERS.R;
+  let periodScores;
+  if (LOCAL_MODE) {
+    const now = new Date(), weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    periodScores = S.log.reduce((scores, entry) => {
+      if (entry.delta <= 0 || String(entry.reason || '').startsWith('Estorno:')) return scores;
+      const score = scores.get(entry.userId) || { week: 0, month: 0 };
+      if (entry.at >= weekStart.getTime()) score.week += entry.delta;
+      if (entry.at >= monthStart.getTime()) score.month += entry.delta;
+      scores.set(entry.userId, score);
+      return scores;
+    }, new Map());
+  } else {
+    const { data, error } = await backend.rpc('ranking_xp');
+    if (error) fail(`Não foi possível carregar o ranking por período. Execute novamente supabase/schema.sql. ${error.message}`);
+    periodScores = new Map((data || []).map((row) => [Number(row.user_id), {
+      week: Number(row.weekly_xp) || 0, month: Number(row.monthly_xp) || 0
+    }]));
+  }
+  let leaders = S.users.filter((x) => x.active && !x.pending && x.role === 'aluno' && (!f.dept || x.dept === f.dept));
+  leaders = leaders.map((x) => {
+    const periods = periodScores.get(x.id) || { week: 0, month: 0 };
+    const score = f.scope === 'geral' ? x.xp : f.scope === 'mes' ? periods.month : periods.week;
+    return { x, score };
+  }).sort((a, b) => b.score - a.score || b.x.xp - a.x.xp || a.x.name.localeCompare(b.x.name, 'pt-BR'));
+  const medals = ['🥇', '🥈', '🥉'];
+  const period = f.scope === 'geral' ? 'Todo o período' : f.scope === 'mes' ? 'Este mês' : 'Esta semana';
+  const top = leaders.slice(0, 3), podium = [top[1], top[0], top[2]].filter(Boolean);
+  if (rankingRefreshTimer) clearInterval(rankingRefreshTimer);
+  rankingRefreshTimer = setInterval(() => {
+    if (location.hash.split('/')[1] !== 'ranking') {
+      clearInterval(rankingRefreshTimer);
+      rankingRefreshTimer = null;
+      return;
+    }
+    rerender();
+  }, 60000);
+  app.innerHTML = `<div class="ranking-page">
+    <header class="ranking-heading"><div><span class="eyebrow">JORNADA EM MOVIMENTO</span><h1>Ranking</h1><p>Aprendizado que vira conquista. Quem está avançando agora?</p></div><span class="ranking-live"><i></i> Atualizado automaticamente</span></header>
+    <section class="ranking-filters"><div class="ranking-period-tabs" role="group" aria-label="Período do ranking">
+      ${[['semana', 'Esta semana'], ['mes', 'Este mês'], ['geral', 'Geral']].map(([value, label]) => `<button type="button" class="${f.scope === value ? 'active' : ''}" data-action="ranking-period" data-value="${value}" aria-pressed="${f.scope === value}">${label}</button>`).join('')}
+    </div>${fsel('Departamento', 'R.dept', [['', 'Todos os departamentos'], ...S.depts.map((d) => [d, d])], f.dept)}</section>
+    <div class="ranking-period-note"><span class="ranking-period-icon">◷</span><span><strong>${period}</strong> · ${f.scope === 'semana' ? 'a semana recomeça automaticamente toda segunda-feira' : f.scope === 'mes' ? 'o placar reinicia automaticamente no primeiro dia do mês' : 'XP acumulado desde o início'}</span><span class="ranking-reset">Atualização automática a cada minuto</span></div>
+    ${leaders.length ? `${top.length ? `<section class="ranking-podium" aria-label="Pódio da ${period.toLowerCase()}">${podium.map((r) => {
+      const place = leaders.indexOf(r) + 1, medalIndex = place - 1;
+      return `<article class="podium-card place-${place} ${r.x.id === u.id ? 'current-user' : ''}"><span class="podium-medal medal-${place}" aria-label="${place}º lugar">${medals[medalIndex]}</span>${avatar(r.x, 'lg')}<strong class="podium-name">${esc(r.x.name)}</strong><span class="podium-dept">${esc(r.x.dept || 'Sem departamento')}</span><b class="podium-score">${r.score.toLocaleString('pt-BR')} <small>XP</small></b><span class="podium-level">Nível ${levelInfo(r.x.xp).level}</span><div class="podium-base"><span>${String(place).padStart(2, '0')}</span></div></article>`;
+    }).join('')}</section>` : ''}
+    <section class="ranking-list panel"><div class="ranking-list-heading"><div><span class="eyebrow">PLACAR COMPLETO</span><h2>Todos os participantes</h2></div><span>${leaders.length} ${leaders.length === 1 ? 'participante' : 'participantes'}</span></div><div class="table-wrap"><table><thead><tr><th>Posição</th><th>Participante</th><th>Departamento</th><th>Nível</th><th>${f.scope === 'geral' ? 'XP total' : 'XP no período'}</th></tr></thead><tbody>
+      ${leaders.map((r, i) => `<tr class="${r.x.id === u.id ? 'me ranking-me' : ''}"><td><span class="ranking-position ${i < 3 ? `rank-${i + 1}` : ''}">${i < 3 ? medals[i] : String(i + 1).padStart(2, '0')}</span></td><td><span class="ranking-person">${avatar(r.x, 'sm')}<strong>${esc(r.x.name)}${r.x.id === u.id ? '<small>Você</small>' : ''}</strong></span></td><td>${esc(r.x.dept || '—')}</td><td><span class="ranking-level">${levelInfo(r.x.xp).level}</span></td><td><strong class="ranking-xp">${r.score.toLocaleString('pt-BR')} <small>XP</small></strong></td></tr>`).join('')}
+    </tbody></table></div></section>` : '<div class="panel empty">Ainda não há participantes neste ranking.</div>'}
+  </div>`;
+};
+ACTIONS['ranking-period'] = (d) => {
+  if (!['semana', 'mes', 'geral'].includes(d.value)) fail('Período de ranking inválido.');
+  FILTERS.R.scope = d.value; rerender();
 };
 
 // ---------- PERFIL (conquistas, certificados e histórico) ----------
