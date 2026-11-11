@@ -7,16 +7,44 @@ const visibleCourses = (u) => S.courses.filter((c) => isStaff() || c.status === 
 const fsel = (label, key, opts, val) => `<label>${label}<select data-filter="${key}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === val ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
 const ICON = { video: '▶', link: '🔗', texto: '📄' };
 const ytId = (url) => ((url || '').match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/) || [])[1] || '';
+const ANNOUNCEMENT_CATEGORIES = {
+  novo: { label: 'NOVO', className: 'new' },
+  comunicado: { label: 'COMUNICADO', className: 'notice' },
+  melhoria: { label: 'MELHORIA', className: 'improve' }
+};
+const announcementStatus = (item) => item.status || 'published';
+const announcementDate = (item) => Number(item.status === 'scheduled' ? item.scheduledAt : (item.publishedAt || item.at)) || 0;
+const isAnnouncementVisible = (item, now = Date.now()) => {
+  const status = announcementStatus(item);
+  if (!['published', 'scheduled'].includes(status)) return false;
+  const date = announcementDate(item);
+  return date <= now;
+};
+const visibleAnnouncements = () => S.announcements.filter((item) => isAnnouncementVisible(item))
+  .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || announcementDate(b) - announcementDate(a));
+const announcementCard = (item, imageUrl = '') => {
+  const category = ANNOUNCEMENT_CATEGORIES[item.category] || ANNOUNCEMENT_CATEGORIES.comunicado;
+  const description = item.description || item.text || '';
+  return `<article class="update-card">
+    <div class="update-card-meta"><span class="update-category ${category.className}">${category.label}</span>
+      <time datetime="${new Date(announcementDate(item)).toISOString()}">${fmtDate(announcementDate(item))}</time></div>
+    ${item.pinned ? '<span class="update-pinned">Fixada</span>' : ''}
+    <h3>${esc(item.title)}</h3><p>${esc(description)}</p>
+    ${imageUrl ? `<img class="update-image" src="${esc(imageUrl)}" alt="${esc(item.imageAlt || item.title)}" loading="lazy">` : ''}
+  </article>`;
+};
 
 // ---------- INÍCIO ----------
 VIEWS.home = async () => {
+  await refreshAnnouncements();
   const u = me(), li = levelInfo(u.xp), st = userStats(u), checked = u.lastCheckin === todayISO();
   const mine = S.enrollments.filter((e) => e.userId === u.id).map((e) => ({ e, c: course(e.courseId), p: courseProg(u.id, e.courseId) })).filter((x) => x.c);
   const pend = mine.filter((x) => !x.p.complete);
   const duty = pend.filter((x) => x.c.mandatory).sort((a, b) => (dueOf(a.e, a.c) || '9').localeCompare(dueOf(b.e, b.c) || '9'));
   const cont = pend.find((x) => x.p.done > 0) || pend[0];
   const recs = visibleCourses(u).filter((c) => !isEnrolled(u.id, c.id) && c.status === 'publicado').slice(0, 3);
-  const news = S.announcements.slice().sort((a, b) => (b.pinned - a.pinned) || b.at - a.at).slice(0, 3);
+  const news = visibleAnnouncements().slice(0, 3);
+  const newsImages = await announcementImageURLs(news);
   app.innerHTML = `
     <section class="hero learning-hero"><div class="grow"><span class="eyebrow">${esc(u.dept || ROLE[u.role])} <span aria-hidden="true">·</span> NÍVEL ${li.level}</span>
       <h1>Oi, ${esc(u.name.split(' ')[0])}!<br>O que vamos aprender <span>hoje?</span></h1>
@@ -31,13 +59,29 @@ VIEWS.home = async () => {
     ${isAdmin() && !S.courses.length ? panel('<h2>Plataforma vazia</h2><p class="muted">Quer ver tudo funcionando? Carregue cursos, produtos e alunos de exemplo (você pode apagar depois).</p><button class="btn" data-action="seed">Carregar dados de demonstração</button>') : ''}
     ${duty.length ? panel(`<div class="section-heading"><div><span class="eyebrow">NA SUA JORNADA</span><h2>Obrigatórios pendentes</h2></div></div>${duty.map((x) => `<div class="spread course-row"><div><a href="#/course/${x.c.id}"><strong>${esc(x.c.title)}</strong></a><div class="muted small">${x.p.done}/${x.p.total} aulas${x.p.quizOk ? '' : ' · prova pendente'}</div></div>${dueTag(dueOf(x.e, x.c))}</div>`).join('')}`) : ''}
     ${cont ? panel(`<div class="section-heading"><div><span class="eyebrow">RETOME DE ONDE PAROU</span><h2>Continue aprendendo</h2></div><a class="text-link" href="#/mine">Ver meus cursos ↗</a></div><div class="continue-card"><div class="continue-art"><span>${esc(cont.c.emoji || '✳')}</span></div><div class="continue-info"><span class="tag">${esc(cont.c.area || CAT[cont.c.category])}</span><h3>${esc(cont.c.title)}</h3><div class="bar"><span style="width:${cont.p.pct}%"></span></div><div class="muted small">${cont.p.pct}% concluído · ${cont.p.done} de ${cont.p.total} aulas</div></div><a class="btn" href="#/course/${cont.c.id}">Continuar <span aria-hidden="true">→</span></a></div>`) : ''}
-    ${news.length ? panel(`<h2>📢 Mural de avisos</h2>${news.map((n) => `<div style="padding:8px 0;border-bottom:1px solid var(--line)"><strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong> <span class="muted small">${fmtDate(n.at)}</span><div>${esc(n.text)}</div></div>`).join('')}`) : ''}
-    ${recs.length ? `<div class="section-heading"><div><span class="eyebrow">FEITO PARA VOCÊ</span><h2>Descubra seu próximo curso</h2></div><a class="text-link" href="#/courses">Ver catálogo ↗</a></div><div class="grid" style="margin-bottom:28px">${recs.map((c) => courseCard(c, u)).join('')}</div>` : ''}
+    <section class="home-discovery-grid ${recs.length ? '' : 'updates-only'}">
+      <div class="home-course-discovery">${recs.length ? `<div class="section-heading"><div><span class="eyebrow">FEITO PARA VOCÊ</span><h2>Descubra seu próximo curso</h2></div><a class="text-link" href="#/courses">Ver catálogo ↗</a></div><div class="grid" style="margin-bottom:28px">${recs.map((c) => courseCard(c, u)).join('')}</div>` : ''}</div>
+      <aside class="updates-wall" aria-labelledby="updates-wall-title">
+        <div class="updates-wall-heading"><div><span class="eyebrow">NOVIDADES</span><h2 id="updates-wall-title">Atualizações da academia</h2></div><span class="updates-count">${news.length}</span></div>
+        <div class="updates-wall-list">${news.length ? news.map((item) => announcementCard(item, newsImages.get(String(item.id)))).join('') : '<p class="updates-empty">Ainda não há novidades publicadas.</p>'}</div>
+        <a class="updates-all-link" href="#/updates">Ver todas as novidades <span aria-hidden="true">→</span></a>
+      </aside>
+    </section>
     <section class="achievement-section"><div class="achievement-heading"><div><span class="eyebrow">CADA CONQUISTA CONTA</span><h2>Suas conquistas</h2><p>Aprender também é colecionar pequenas vitórias.</p></div><span class="achievement-total"><strong>${u.badges.length}</strong><span>de ${BADGES.length}<br>conquistas</span></span></div>
       <div class="badges achievement-grid">${BADGES.map((b) => { const earned = u.badges.includes(b.id); return `<article class="badge achievement-card badge-${b.id} ${earned ? 'earned' : 'locked'}"><div class="badge-medal"><span class="badge-medal-shine"></span><span class="ic">${b.icon}</span><span class="badge-check" aria-hidden="true">${earned ? '✓' : '·'}</span></div><strong>${b.name}</strong><div class="muted small">${b.desc}</div><span class="badge-status">${earned ? 'Conquistada' : 'Continue aprendendo'}</span></article>`; }).join('')}</div></section>`;
 };
 ACTIONS.checkin = () => { const t = checkin(me().id); if (t) toast(`Check-in feito! +${t} pontos`); renderChrome(); rerender(); };
 ACTIONS.seed = async () => { need('admin'); await seedDemo(); toast('Cursos, aulas e produtos de demonstração carregados.'); rerender(); };
+
+VIEWS.updates = async () => {
+  await refreshAnnouncements();
+  const items = visibleAnnouncements();
+  const images = await announcementImageURLs(items);
+  app.innerHTML = `<div class="updates-history">
+    <div class="page-head"><div><span class="eyebrow">ACADEMIA CORPORATIVA</span><h1>Atualizações</h1><p class="muted">Novidades, comunicados e melhorias da plataforma.</p></div><a class="btn ghost" href="#/home">Voltar ao início</a></div>
+    ${items.length ? `<div class="updates-history-list">${items.map((item) => announcementCard(item, images.get(String(item.id)))).join('')}</div>` : '<div class="panel empty"><h2>Nenhuma novidade publicada</h2><p class="muted">Quando houver atualizações, elas aparecerão aqui.</p></div>'}
+  </div>`;
+};
 
 // ---------- CATÁLOGO DE CURSOS ("Cursos" e "Meus cursos") ----------
 let catalogMode = 'all';

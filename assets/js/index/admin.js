@@ -1,8 +1,8 @@
 // ============================================================================
 // 8. TELAS DE ADMINISTRAÇÃO E GESTÃO
-// Administrador vê todas as abas. Instrutor vê só Painel, Cursos, Relatórios e Avisos.
+// Administrador vê todas as abas. Instrutor vê só Painel, Cursos, Relatórios e Atualizações.
 // ============================================================================
-const ADMIN_TABS = [['dashboard', 'Painel'], ['users', 'Usuários'], ['groups', 'Grupos e atribuições'], ['courses', 'Cursos'], ['store', 'Produtos da loja'], ['redemptions', 'Trocas'], ['reports', 'Relatórios'], ['announcements', 'Avisos'], ['settings', 'Configurações'], ['data', 'Dados e logs']];
+const ADMIN_TABS = [['dashboard', 'Painel'], ['users', 'Usuários'], ['groups', 'Grupos e atribuições'], ['courses', 'Cursos'], ['store', 'Produtos da loja'], ['redemptions', 'Trocas'], ['reports', 'Relatórios'], ['announcements', 'Atualizações'], ['settings', 'Configurações'], ['data', 'Dados e logs']];
 const STAFF_TABS = ['dashboard', 'courses', 'reports', 'announcements'];
 const AT = {}; // AT[aba] devolve o HTML de cada aba
 
@@ -307,11 +307,201 @@ ACTIONS['export-report'] = (d) => {
   else if (d.kind === 'points') { need('admin'); downloadCSV(`pontos-${day}.csv`, [['Pessoa', 'Pontos', 'Motivo', 'Data'], ...S.log.map((l) => [user(l.userId)?.name || '', l.delta, l.reason, fmtDate(l.at)])]); }
 };
 
-// ---------- AVISOS (mural na tela inicial) ----------
-AT.announcements = () => panel(`<h2>Novo aviso</h2><form data-form="announce">${fld('Título', 'title', '', 'required')}${area('Mensagem', 'text', '', 'required')}${chk('Fixar no topo', 'pinned', false)}<button class="btn" type="submit">Publicar aviso</button></form>`)
-  + panel(`<h2>Avisos publicados</h2>${S.announcements.length ? S.announcements.slice().sort((a, b) => (b.pinned - a.pinned) || b.at - a.at).map((n) => `<div class="spread" style="padding:8px 0;border-bottom:1px solid var(--line)"><div><strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong> <span class="muted small">${fmtDate(n.at)}</span><div>${esc(n.text)}</div></div><button class="btn small danger" data-action="announce-del" data-id="${n.id}">Excluir</button></div>`).join('') : '<p class="muted">Nenhum aviso.</p>'}`);
-FORMS.announce = (d) => { need('staff'); if (!d.title.trim() || !d.text.trim()) fail('Preencha título e mensagem.'); S.announcements.push({ id: nid(), title: d.title.trim(), text: d.text.trim(), at: Date.now(), authorId: me().id, pinned: d.pinned === 'on' }); S.users.filter((u) => u.id !== me().id && u.active).forEach((u) => notify(u.id, `📢 ${d.title.trim()}`, '#/home')); audit(`Aviso: ${d.title}`); save(); toast('Aviso publicado.'); rerender(); };
-ACTIONS['announce-del'] = (d) => { need('staff'); S.announcements = S.announcements.filter((n) => n.id !== Number(d.id)); save(); rerender(); };
+// ---------- MURAL DE ATUALIZAÇÕES ----------
+const ANNOUNCEMENT_OPTIONS = [['novo', 'Novo'], ['comunicado', 'Comunicado'], ['melhoria', 'Melhoria']];
+const localDateTimeValue = (timestamp) => {
+  if (!timestamp) return '';
+  const date = new Date(timestamp);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
+};
+const announcementStateLabel = (item) => {
+  if (announcementStatus(item) === 'draft') return 'Rascunho';
+  if (announcementStatus(item) === 'scheduled' && !isAnnouncementVisible(item)) return 'Agendada';
+  return 'Publicada';
+};
+
+AT.announcements = async (editId) => {
+  await refreshAnnouncements();
+  const editing = editId ? S.announcements.find((item) => String(item.id) === String(editId)) : null;
+  if (editId && !editing) fail('Publicação não encontrada.');
+  const images = await announcementImageURLs(editing ? [editing] : []);
+  const status = editing ? (announcementStatus(editing) === 'scheduled' && isAnnouncementVisible(editing) ? 'published' : announcementStatus(editing)) : 'published';
+  const description = editing?.description || editing?.text || '';
+  const imageURL = editing ? images.get(String(editing.id)) : '';
+  const form = panel(`<div class="announcement-admin-heading"><div><span class="eyebrow">${editing ? 'EDITAR PUBLICAÇÃO' : 'COMUNICAÇÃO DA PLATAFORMA'}</span><h2>${editing ? esc(editing.title) : 'Nova atualização'}</h2></div></div>
+    <form data-form="announce" data-id="${editing ? esc(editing.id) : ''}">
+      <div class="row">${fld('Título', 'title', editing?.title || '', 'required maxlength="120"')}${sel('Categoria', 'category', ANNOUNCEMENT_OPTIONS, editing?.category || 'comunicado')}</div>
+      ${area('Descrição', 'description', description, 'required maxlength="1200" rows="4"')}
+      <div class="row">${sel('Publicação', 'status', [['published', 'Publicar imediatamente'], ['draft', 'Salvar como rascunho'], ['scheduled', 'Agendar publicação']], status)}
+        <label>Data e hora da publicação<input type="datetime-local" name="scheduledAt" value="${esc(localDateTimeValue(editing?.scheduledAt))}"><small class="muted">Obrigatória somente ao agendar.</small></label></div>
+      <div class="row"><label>Imagem (opcional)<input type="file" name="image" accept="image/jpeg,image/png,image/webp"><small class="muted">JPG, PNG ou WebP · até 5 MB</small></label>${chk('Fixar no topo do mural', 'pinned', !!editing?.pinned)}</div>
+      ${imageURL ? `<div class="announcement-image-preview"><img src="${esc(imageURL)}" alt="${esc(editing?.title || 'Imagem atual da publicação')}">${chk('Remover imagem atual', 'removeImage', false)}</div>` : ''}
+      <div class="actions"><button class="btn" type="submit">${editing ? 'Salvar alterações' : 'Salvar publicação'}</button>${editing ? '<a class="btn ghost" href="#/admin/announcements">Cancelar edição</a>' : ''}</div>
+    </form>`);
+  const items = S.announcements.slice().sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || announcementDate(b) - announcementDate(a));
+  const itemImages = await announcementImageURLs(items);
+  const list = items.length ? `<div class="announcement-admin-list">${items.map((item) => {
+    const category = ANNOUNCEMENT_CATEGORIES[item.category] || ANNOUNCEMENT_CATEGORIES.comunicado;
+    const published = isAnnouncementVisible(item);
+    const itemDescription = item.description || item.text || '';
+    const thumbnail = itemImages.get(String(item.id));
+    return `<article class="announcement-admin-item ${thumbnail ? 'has-image' : ''}">
+      ${thumbnail ? `<img src="${esc(thumbnail)}" alt="" loading="lazy">` : ''}
+      <div class="announcement-admin-copy"><div class="announcement-admin-meta"><span class="update-category ${category.className}">${category.label}</span><span class="announcement-state ${published ? 'published' : ''}">${announcementStateLabel(item)}</span><time>${fmtDate(announcementDate(item))}</time></div>
+        <strong>${item.pinned ? 'Fixada · ' : ''}${esc(item.title)}</strong><p>${esc(itemDescription)}</p></div>
+      <div class="announcement-admin-actions"><a class="btn ghost small" href="#/admin/announcements/${encodeURIComponent(item.id)}">Editar</a>
+        <button class="btn ghost small" data-action="announce-pin" data-id="${esc(item.id)}">${item.pinned ? 'Desafixar' : 'Fixar'}</button>
+        ${announcementStatus(item) !== 'published' ? `<button class="btn ghost small" data-action="announce-publish" data-id="${esc(item.id)}">Publicar agora</button>` : ''}
+        <button class="btn danger small" data-action="announce-del" data-id="${esc(item.id)}">Excluir</button></div>
+    </article>`;
+  }).join('')}</div>` : '<div class="empty">Nenhuma publicação cadastrada.</div>';
+  return `${form}${panel(`<div class="spread announcement-list-heading"><div><span class="eyebrow">HISTÓRICO EDITORIAL</span><h2>Publicações (${items.length})</h2></div><span class="muted small">Publicadas, agendadas e rascunhos</span></div>${list}`)}`;
+};
+
+async function uploadAnnouncementImage(id, file) {
+  if (!file) return {};
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) fail('Escolha uma imagem JPG, PNG ou WebP.');
+  if (file.size > 5 * 1024 * 1024) fail('A imagem deve ter no máximo 5 MB.');
+  const dataURL = await imageToDataURL(file, 1200, 0.82);
+  if (LOCAL_MODE) return { imageData: dataURL };
+  const blob = await (await fetch(dataURL)).blob();
+  if (blob.size > 700 * 1024) fail('A imagem continua muito grande após a compressão. Escolha uma imagem menor.');
+  const path = `${id}/${Date.now()}-${nid()}.jpg`;
+  const { error } = await backend.storage.from('announcement-images').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) fail(error.message);
+  return { imagePath: path };
+}
+
+async function persistAnnouncements() {
+  if (LOCAL_MODE) { save(); return; }
+  await syncCollection('announcements');
+  save();
+}
+
+FORMS.announce = async (d, form) => {
+  need('staff');
+  const title = d.title.trim(), description = d.description.trim();
+  if (!title || !description) fail('Preencha o título e a descrição.');
+  if (!ANNOUNCEMENT_OPTIONS.some(([value]) => value === d.category)) fail('Escolha uma categoria válida.');
+  if (!['published', 'draft', 'scheduled'].includes(d.status)) fail('Escolha como a publicação será salva.');
+  const scheduledAt = d.scheduledAt ? new Date(d.scheduledAt).getTime() : 0;
+  if (d.status === 'scheduled' && (!Number.isFinite(scheduledAt) || scheduledAt <= Date.now()))
+    fail('Escolha uma data e hora futuras para agendar a publicação.');
+
+  const id = form.dataset.id || String(nid());
+  const index = S.announcements.findIndex((item) => String(item.id) === String(id));
+  const old = index >= 0 ? S.announcements[index] : null;
+  let nextImage = old ? { imagePath: old.imagePath, imageData: old.imageData } : {};
+  const oldImagePath = old?.imagePath || '';
+  let uploadedImagePath = '';
+  if (d.removeImage === 'on') nextImage = {};
+  const file = form.elements.image.files[0];
+  if (file) {
+    nextImage = await uploadAnnouncementImage(id, file);
+    uploadedImagePath = nextImage.imagePath || '';
+  }
+  const now = Date.now();
+  const item = {
+    ...(old || {}),
+    id: old?.id ?? id,
+    title,
+    description,
+    text: description,
+    category: d.category,
+    status: d.status,
+    pinned: d.pinned === 'on',
+    authorId: old?.authorId || me().id,
+    at: old?.at || now,
+    publishedAt: d.status === 'published' ? (old && announcementStatus(old) === 'published' ? (old.publishedAt || old.at) : now) : 0,
+    scheduledAt: d.status === 'scheduled' ? scheduledAt : 0,
+    ...nextImage
+  };
+  const previous = S.announcements;
+  S.announcements = previous.slice();
+  if (index >= 0) S.announcements[index] = item; else S.announcements.push(item);
+  try {
+    await persistAnnouncements();
+  } catch (error) {
+    S.announcements = previous;
+    if (uploadedImagePath) {
+      const { error: cleanupError } = await backend.storage.from('announcement-images').remove([uploadedImagePath]);
+      if (cleanupError) toast(`A publicação não foi salva e a imagem temporária não pôde ser removida: ${cleanupError.message}`, true);
+    }
+    throw error;
+  }
+  if (oldImagePath && oldImagePath !== item.imagePath && !LOCAL_MODE) {
+    const { error } = await backend.storage.from('announcement-images').remove([oldImagePath]);
+    if (error) toast(`Publicação salva, mas a imagem antiga não pôde ser removida: ${error.message}`, true);
+  }
+  const wasVisible = old && isAnnouncementVisible(old);
+  if (isAnnouncementVisible(item) && !wasVisible) {
+    S.users.filter((u) => u.id !== me().id && u.active && !u.pending)
+      .forEach((u) => notify(u.id, `Atualização: ${title}`, '#/updates'));
+  }
+  audit(`${old ? 'Publicação atualizada' : 'Publicação criada'}: ${title}`);
+  save();
+  toast(item.status === 'draft' ? 'Rascunho salvo.' : item.status === 'scheduled' ? 'Publicação agendada.' : 'Atualização publicada.');
+  go('#/admin/announcements');
+};
+
+ACTIONS['announce-edit'] = (d) => { need('staff'); go(`#/admin/announcements/${encodeURIComponent(d.id)}`); };
+ACTIONS['announce-pin'] = async (d) => {
+  need('staff');
+  const item = S.announcements.find((entry) => String(entry.id) === String(d.id));
+  if (!item) fail('Publicação não encontrada.');
+  const previous = S.announcements;
+  const pinned = !item.pinned;
+  S.announcements = previous.map((entry) => entry === item ? { ...entry, pinned } : entry);
+  try {
+    await persistAnnouncements();
+  } catch (error) {
+    S.announcements = previous;
+    throw error;
+  }
+  const updated = S.announcements.find((entry) => String(entry.id) === String(d.id));
+  audit(`${updated.pinned ? 'Publicação fixada' : 'Publicação desafixada'}: ${updated.title}`);
+  save(); rerender();
+};
+ACTIONS['announce-publish'] = async (d) => {
+  need('staff');
+  const item = S.announcements.find((entry) => String(entry.id) === String(d.id));
+  if (!item) fail('Publicação não encontrada.');
+  const wasVisible = isAnnouncementVisible(item);
+  const previous = S.announcements;
+  const updated = { ...item, status: 'published', publishedAt: Date.now(), scheduledAt: 0 };
+  S.announcements = previous.map((entry) => entry === item ? updated : entry);
+  try {
+    await persistAnnouncements();
+  } catch (error) {
+    S.announcements = previous;
+    throw error;
+  }
+  if (!wasVisible) S.users.filter((u) => u.id !== me().id && u.active && !u.pending)
+    .forEach((u) => notify(u.id, `Atualização: ${updated.title}`, '#/updates'));
+  audit(`Publicação liberada: ${updated.title}`);
+  save(); rerender();
+};
+ACTIONS['announce-del'] = async (d) => {
+  need('staff');
+  const item = S.announcements.find((entry) => String(entry.id) === String(d.id));
+  if (!item) fail('Publicação não encontrada.');
+  if (!confirm(`Excluir "${item.title}"? Essa ação não pode ser desfeita.`)) return;
+  const previous = S.announcements;
+  S.announcements = previous.filter((entry) => String(entry.id) !== String(d.id));
+  try {
+    await persistAnnouncements();
+  } catch (error) {
+    S.announcements = previous;
+    throw error;
+  }
+  if (item.imagePath && !LOCAL_MODE) {
+    const { error } = await backend.storage.from('announcement-images').remove([item.imagePath]);
+    if (error) toast(`Publicação excluída, mas a imagem não pôde ser removida: ${error.message}`, true);
+  }
+  audit(`Publicação excluída: ${item.title}`);
+  save(); rerender();
+};
 
 // ---------- CONFIGURAÇÕES (regras de pontos, aparência, cadastro) ----------
 AT.settings = () => {

@@ -197,16 +197,33 @@ function downloadCSV(name, rows) {
   downloadBlob(name, new Blob([csv], { type: 'text/csv;charset=utf-8' }));
 }
 // Reduz imagem de produto para caber no armazenamento (240px, JPEG).
-function imageToDataURL(file, max = 240) {
+function imageToDataURL(file, max = 240, quality = 0.8) {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
       const r = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
       c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg', 0.8));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(img.src); res(c.toDataURL('image/jpeg', quality));
     };
     img.onerror = () => rej(new Error('Imagem inválida.')); img.src = URL.createObjectURL(file);
   });
+}
+async function announcementImageURLs(items) {
+  const urls = new Map(), paths = [];
+  items.forEach((item) => {
+    if (item.imageData) urls.set(String(item.id), item.imageData);
+    else if (item.imagePath && !LOCAL_MODE) paths.push(item);
+  });
+  if (!paths.length) return urls;
+  const { data, error } = await backend.storage.from('announcement-images')
+    .createSignedUrls(paths.map((item) => item.imagePath), 3600);
+  if (error) fail(error.message);
+  (data || []).forEach((entry) => {
+    if (entry.error) fail(entry.error.message || 'Não foi possível carregar uma imagem do mural.');
+    const item = paths.find((candidate) => candidate.imagePath === entry.path);
+    if (item && entry.signedUrl) urls.set(String(item.id), entry.signedUrl);
+  });
+  return urls;
 }
 // Descobre a duração (em minutos) de um vídeo enviado.
 function probeDuration(file) {

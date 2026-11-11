@@ -235,6 +235,26 @@ async function syncCollection(collection) {
   }
 }
 
+async function refreshAnnouncements() {
+  if (!remoteReady || LOCAL_MODE) return;
+  const { data, error } = await backend.from('app_records')
+    .select('id,collection,record_id,owner_id,payload')
+    .eq('collection', 'announcements')
+    .is('owner_id', null)
+    .range(0, 9999);
+  if (error) throw error;
+  const rows = data || [];
+  const currentKeys = new Set(rows.map((row) => remoteRecordKey(row.collection, row.owner_id, row.record_id)));
+  [...remoteRecordSnapshots.entries()].forEach(([key, row]) => {
+    if (row.collection === 'announcements' && !currentKeys.has(key)) remoteRecordSnapshots.delete(key);
+  });
+  rows.forEach((row) => remoteRecordSnapshots.set(
+    remoteRecordKey(row.collection, row.owner_id, row.record_id),
+    { ...row, snapshot: stableJSON(row.payload) }
+  ));
+  S.announcements = rows.map((row) => row.payload);
+}
+
 async function syncRemoteState() {
   if (!remoteReady || !sessionAuthId) return;
   await syncProfiles();

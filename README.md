@@ -6,7 +6,9 @@
 - `supabase/schema.sql` define o banco, as políticas RLS e o Storage.
 - `supabase/bootstrap-admin.sql` é executado manualmente no Supabase para configurar a primeira conta administrativa.
 
-O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para incluir as atualizações do perfil e a função `ranking_xp`, usada para calcular os placares semanal e mensal sem expor o histórico detalhado de pontos. O ranking considera a semana de segunda a domingo e o mês do calendário, atualizando os períodos automaticamente.
+O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para aplicar as políticas e recursos atualizados, incluindo o mural de atualizações e seu bucket privado de imagens. A função `ranking_xp` calcula os placares semanal e mensal sem expor o histórico detalhado de pontos. O ranking considera a semana de segunda a domingo e o mês do calendário, atualizando os períodos automaticamente.
+
+O mural mostra até três publicações na página inicial e mantém um histórico completo em **Atualizações**. A equipe pode criar comunicados, novidades e melhorias, salvar rascunhos, agendar ou fixar publicações e anexar imagens.
 
 Os estilos estão divididos em `base`, `navigation`, `components` e `pages`. Os scripts são carregados em ordem e separados em `data`, `security`, `helpers`, `rules`, `demo`, `navigation`, `learner`, `admin` e `events`. Como os scripts são clássicos (não módulos ES), mantenha a ordem das referências no HTML.
 

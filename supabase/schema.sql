@@ -181,6 +181,32 @@ create index if not exists app_records_owner_collection_idx
 create index if not exists app_records_collection_idx
   on public.app_records (collection);
 
+create or replace function public.is_visible_announcement(p_payload jsonb)
+returns boolean
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select case coalesce(p_payload ->> 'status', 'published')
+    when 'published' then
+      case
+        when not (p_payload ? 'publishedAt') then true
+        when p_payload ->> 'publishedAt' ~ '^[0-9]{1,16}$'
+          then (p_payload ->> 'publishedAt')::numeric <= extract(epoch from now()) * 1000
+        else false
+      end
+    when 'scheduled' then
+      case
+        when p_payload ->> 'scheduledAt' ~ '^[0-9]{1,16}$'
+          then (p_payload ->> 'scheduledAt')::numeric <= extract(epoch from now()) * 1000
+        else false
+      end
+    else false
+  end;
+$$;
+revoke all on function public.is_visible_announcement(jsonb) from public, anon;
+grant execute on function public.is_visible_announcement(jsonb) to authenticated;
+
 create or replace function public.has_course_enrollment(p_course_id text)
 returns boolean
 language sql
@@ -234,7 +260,13 @@ using (
               and (public.is_platform_staff() or public.has_course_enrollment(record_id)))
           or (collection = 'products'
               and (public.is_platform_staff() or payload ->> 'active' = 'true'))
-          or collection = 'announcements'
+          or (
+            collection = 'announcements'
+            and (
+              public.is_platform_staff()
+              or public.is_visible_announcement(payload)
+            )
+          )
           or (collection = 'audit' and public.is_platform_staff())
         )
       )
@@ -377,7 +409,8 @@ grant execute on function public.verify_course_certificate(text) to anon, authen
 
 insert into storage.buckets (id, name, public)
 values ('course-videos', 'course-videos', false),
-       ('course-materials', 'course-materials', false)
+       ('course-materials', 'course-materials', false),
+       ('announcement-images', 'announcement-images', false)
 on conflict (id) do update set public = false;
 
 drop policy if exists "Read course files" on storage.objects;
@@ -401,5 +434,39 @@ create policy "Staff delete course files"
 on storage.objects for delete to authenticated
 using (
   bucket_id in ('course-videos', 'course-materials')
+  and public.is_platform_staff()
+);
+
+drop policy if exists "Read published announcement images" on storage.objects;
+create policy "Read published announcement images"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'announcement-images'
+  and (
+    public.is_platform_staff()
+    or exists (
+      select 1
+      from public.app_records
+      where collection = 'announcements'
+        and owner_id is null
+        and record_id = (storage.foldername(name))[1]
+        and public.is_visible_announcement(payload)
+    )
+  )
+);
+
+drop policy if exists "Staff upload announcement images" on storage.objects;
+create policy "Staff upload announcement images"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'announcement-images'
+  and public.is_platform_staff()
+);
+
+drop policy if exists "Staff delete announcement images" on storage.objects;
+create policy "Staff delete announcement images"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'announcement-images'
   and public.is_platform_staff()
 );
