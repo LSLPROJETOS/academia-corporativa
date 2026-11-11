@@ -96,6 +96,32 @@ const idbDel = (id) => idbOp('readwrite', (s) => s.delete(id));
 const sharedCollections = ['courses', 'lessons', 'quizzes', 'products', 'announcements', 'audit'];
 const privateCollections = ['enrollments', 'progress', 'watch', 'attempts', 'certificates', 'ratings', 'comments', 'notes', 'favorites', 'redemptions', 'log', 'notifications'];
 const simpleCollections = ['courses', 'lessons', 'quizzes', 'products', 'announcements', 'enrollments', 'progress', 'attempts', 'certificates', 'ratings', 'comments', 'favorites', 'redemptions', 'log', 'notifications', 'audit'];
+// ---------- Regras no servidor (RPC) ----------
+// Pontos, provas, certificados e trocas são calculados no banco (migration-regras-no-servidor.sql).
+// O aluno só grava diretamente estas coleções; o restante entra por funções (rpc).
+const studentWritableCollections = ['watch', 'notes', 'ratings', 'comments', 'favorites', 'notifications'];
+async function callRpc(name, args = {}) {
+  if (LOCAL_MODE || !backend) throw new Error('Esta ação exige o banco remoto.');
+  const { data, error } = await backend.rpc(name, args);
+  if (error) throw new Error(error.message);
+  return data;
+}
+// Envia o que está pendente, executa a função no servidor e recarrega o estado (saldo, XP, registros).
+async function rpc(name, args = {}) {
+  clearTimeout(saveTimer); await saveQueue; await syncRemoteState();
+  const data = await callRpc(name, args);
+  const { data: auth } = await backend.auth.getSession();
+  if (auth.session?.user) await loadRemoteState(auth.session.user);
+  return data;
+}
+// Alunos não leem o gabarito: recebem só os dados gerais da prova (nota mínima, pontos, tentativas, nº de perguntas).
+async function loadQuizOverview() {
+  const rows = (await callRpc('my_quiz_overview')) || [];
+  S.quizzes = rows.map((m) => ({
+    courseId: Number(m.courseId), passScore: Number(m.passScore) || 70, points: Number(m.points) || 0, maxAttempts: Number(m.maxAttempts) || 0,
+    questions: Array.from({ length: Number(m.questionCount) || 0 }, () => ({ q: '', options: [], correct: -1, explain: '' }))
+  }));
+}
 const profileSnapshots = new Map();
 const remoteRecordSnapshots = new Map();
 const remoteRecordKey = (collection, ownerId, recordId) => `${collection}\u0000${ownerId || ''}\u0000${recordId}`;
@@ -198,6 +224,7 @@ async function loadRemoteState(authUser) {
   remoteRecordSnapshots.clear();
   (records || []).forEach((row) => remoteRecordSnapshots.set(remoteRecordKey(row.collection, row.owner_id, row.record_id), { ...row, snapshot: stableJSON(row.payload) }));
   hydrateRecords(records || []);
+  if (!['admin', 'instrutor'].includes(own.role)) await loadQuizOverview();
   remoteReady = true;
   return true;
 }
@@ -261,7 +288,7 @@ async function syncRemoteState() {
   if (isStaff()) {
     for (const collection of ['settings', 'departments', ...sharedCollections]) await syncCollection(collection);
   }
-  for (const collection of privateCollections) await syncCollection(collection);
+  for (const collection of (isStaff() ? privateCollections : studentWritableCollections)) await syncCollection(collection);
 }
 
 async function syncProfiles() {
@@ -273,11 +300,11 @@ async function syncProfiles() {
     const previous = profileSnapshots.get(profile.authId);
     if (previous === snapshot) continue;
     const patch = {
-      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme === 'light' ? 'light' : 'dark', avatar: profile.avatar || {},
-      points: Number(profile.points) || 0, xp: Number(profile.xp) || 0, badges: profile.badges || [],
-      streak: Number(profile.streak) || 0, last_checkin: profile.lastCheckin || null
+      name: profile.name, dept: profile.dept || '', job_title: profile.jobTitle || '', theme: profile.theme === 'light' ? 'light' : 'dark', avatar: profile.avatar || {}
     };
     if (staff) Object.assign(patch, { role: profile.role, active: profile.active, pending: profile.pending });
+    // Pontos, XP, conquistas e sequência: só o administrador ajusta direto; os demais são calculados pelo servidor.
+    if (isAdmin()) Object.assign(patch, { points: Number(profile.points) || 0, xp: Number(profile.xp) || 0, badges: profile.badges || [], streak: Number(profile.streak) || 0, last_checkin: profile.lastCheckin || null });
     const { error } = await backend.from('profiles').update(patch).eq('id', profile.authId);
     if (error) throw error;
     profileSnapshots.set(profile.authId, snapshot);

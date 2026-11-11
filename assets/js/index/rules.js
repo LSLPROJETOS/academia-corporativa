@@ -11,7 +11,7 @@ function levelInfo(xp) {
 function award(uid, amt, reason) {
   const u = user(uid); if (!u || !amt) return;
   const before = levelInfo(u.xp).level; u.points += amt; if (amt > 0) u.xp += amt;
-  S.log.push({ userId: uid, delta: amt, reason, at: Date.now() });
+  S.log.push({ id: nid(), userId: uid, delta: amt, reason, at: Date.now() });
   if (amt > 0 && levelInfo(u.xp).level > before) notify(uid, `⭐ Você subiu para o nível ${levelInfo(u.xp).level}!`, '#/profile');
 }
 // Lista de conquistas. "test" decide quando o usuário ganha; "bonus" são pontos extras.

@@ -282,7 +282,7 @@ AT.redemptions = (st) => {
       <td><div class="actions">${r.status === 'pendente' ? `<button class="btn small" data-action="red-set" data-id="${r.id}" data-to="aprovado">Aprovar</button>` : ''}${r.status === 'aprovado' ? `<button class="btn small" data-action="red-set" data-id="${r.id}" data-to="entregue">Marcar entregue</button>` : ''}${['pendente', 'aprovado'].includes(r.status) ? `<button class="btn small danger" data-action="red-cancel" data-id="${r.id}">Cancelar e estornar</button>` : ''}</div></td></tr>`; }).join('')}</table>` : '<p class="muted">Nenhum pedido nesta situação.</p>'}</div>`;
 };
 ACTIONS['red-set'] = (d) => { need('admin'); const r = S.redemptions.find((x) => x.id === Number(d.id)); r.status = d.to; notify(r.userId, d.to === 'aprovado' ? `✅ Sua troca "${r.productName}" foi aprovada!` : `📦 Sua troca "${r.productName}" foi entregue!`, '#/store'); audit(`Troca ${r.code}: ${d.to}`); save(); rerender(); };
-ACTIONS['red-cancel'] = (d) => { need('admin'); const note = prompt('Motivo do cancelamento (a pessoa verá):', 'Produto indisponível'); if (note === null) return; cancelRedemption(S.redemptions.find((x) => x.id === Number(d.id)), note); audit('Troca cancelada e estornada'); save(); rerender(); };
+ACTIONS['red-cancel'] = async (d) => { need('admin'); const note = prompt('Motivo do cancelamento (a pessoa verá):', 'Produto indisponível'); if (note === null) return; const red = S.redemptions.find((x) => x.id === Number(d.id)); audit('Troca cancelada e estornada'); if (LOCAL_MODE) { cancelRedemption(red, note); save(); } else await rpc('cancel_redemption', { p_redemption_id: String(red.id), p_note: note }); rerender(); };
 
 // ---------- RELATÓRIOS (tabela na tela e exportação CSV) ----------
 function courseReportRows(cid) {

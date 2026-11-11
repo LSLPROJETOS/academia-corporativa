@@ -70,7 +70,7 @@ VIEWS.home = async () => {
     <section class="achievement-section"><div class="achievement-heading"><div><span class="eyebrow">CADA CONQUISTA CONTA</span><h2>Suas conquistas</h2><p>Aprender também é colecionar pequenas vitórias.</p></div><span class="achievement-total"><strong>${u.badges.length}</strong><span>de ${BADGES.length}<br>conquistas</span></span></div>
       <div class="badges achievement-grid">${BADGES.map((b) => { const earned = u.badges.includes(b.id); return `<article class="badge achievement-card badge-${b.id} ${earned ? 'earned' : 'locked'}"><div class="badge-medal"><span class="badge-medal-shine"></span><span class="ic">${b.icon}</span><span class="badge-check" aria-hidden="true">${earned ? '✓' : '·'}</span></div><strong>${b.name}</strong><div class="muted small">${b.desc}</div><span class="badge-status">${earned ? 'Conquistada' : 'Continue aprendendo'}</span></article>`; }).join('')}</div></section>`;
 };
-ACTIONS.checkin = () => { const t = checkin(me().id); if (t) toast(`Check-in feito! +${t} pontos`); renderChrome(); rerender(); };
+ACTIONS.checkin = async () => { const t = LOCAL_MODE ? checkin(me().id) : await rpc('daily_checkin'); if (t) toast(`Check-in feito! +${t} pontos`); renderChrome(); rerender(); };
 ACTIONS.seed = async () => { need('admin'); await seedDemo(); toast('Cursos, aulas e produtos de demonstração carregados.'); rerender(); };
 
 VIEWS.updates = async () => {
@@ -241,16 +241,12 @@ ACTIONS.enroll = async (d) => {
   const u = me(), c = course(d.id), pre = c.prereq ? course(c.prereq) : null;
   if (pre && !isStaff() && !certOf(u.id, pre.id)) fail(`Conclua antes: ${pre.title}`);
   const added = !isEnrolled(u.id, c.id);
-  if (added) S.enrollments.push({ userId: u.id, courseId: c.id, at: Date.now(), dueDate: '' });
-  if (added && !LOCAL_MODE) {
-    try { await syncCollection('enrollments'); }
-    catch (error) { S.enrollments = S.enrollments.filter((e) => !(e.userId === u.id && e.courseId === c.id)); throw error; }
-    const { data, error } = await backend.from('app_records').select('payload').eq('collection', 'quizzes').eq('record_id', String(c.id)).is('owner_id', null).maybeSingle();
-    if (error) fail(error.message); if (data && !quizOf(c.id)) S.quizzes.push(data.payload);
-  }
-  audit(`Inscrição: ${c.title}`); save(); toast('Inscrição feita!'); rerender();
+  if (added && LOCAL_MODE) S.enrollments.push({ userId: u.id, courseId: c.id, at: Date.now(), dueDate: '' });
+  audit(`Inscrição: ${c.title}`);
+  if (added && !LOCAL_MODE) await rpc('enroll_in_course', { p_course_id: String(c.id) }); // o servidor valida curso publicado e pré-requisito
+  save(); toast('Inscrição feita!'); rerender();
 };
-ACTIONS.unenroll = (d) => { if (!confirm('Cancelar sua inscrição? Seu progresso é mantido.')) return; const u = me(); S.enrollments = S.enrollments.filter((e) => !(e.userId === u.id && e.courseId === Number(d.id))); save(); rerender(); };
+ACTIONS.unenroll = async (d) => { if (!confirm('Cancelar sua inscrição? Seu progresso é mantido.')) return; const u = me(); if (LOCAL_MODE) { S.enrollments = S.enrollments.filter((e) => !(e.userId === u.id && e.courseId === Number(d.id))); save(); } else await rpc('unenroll_from_course', { p_course_id: String(d.id) }); rerender(); };
 ACTIONS.rate = (d) => { const u = me(), id = Number(d.id); S.ratings = S.ratings.filter((x) => !(x.userId === u.id && x.courseId === id)); S.ratings.push({ userId: u.id, courseId: id, stars: Number(d.stars) }); save(); toast('Obrigado pela avaliação!'); rerender(); };
 
 // Aba AULAS: player (ou texto) à esquerda e lista de aulas por módulo à direita.
@@ -312,8 +308,20 @@ async function setupMedia() {
   v.addEventListener('ratechange', () => {});
 }
 // Conclui a aula e atualiza a tela sem interromper o vídeo.
-function finishLesson(lid) {
-  const u = me(), r = completeLesson(u.id, lid); if (!r) return;
+const finishingLessons = new Set(); // evita enviar a mesma conclusão várias vezes enquanto o servidor responde
+async function finishLesson(lid) {
+  let r;
+  if (LOCAL_MODE) r = completeLesson(me().id, lid);
+  else {
+    if (isDone(me().id, lid) || finishingLessons.has(lid)) return;
+    finishingLessons.add(lid);
+    try {
+      const res = await rpc('complete_lesson', { p_lesson_id: String(lid) });
+      r = { earned: Number(res?.earned) || 0, cert: res?.certificate || null };
+      finishingLessons.delete(lid);
+    } catch (error) { setTimeout(() => finishingLessons.delete(lid), 15000); throw error; } // não repete a chamada a cada tique do vídeo
+  }
+  const u = me(); if (!r) return;
   toast(r.earned ? `Aula concluída! +${r.earned} pontos` : 'Aula concluída!'); if (r.cert) setTimeout(() => toast('🎓 Curso concluído! Seu certificado foi emitido.'), 2600);
   const li = document.querySelector(`.lessons li[data-id="${lid}"]`); if (li) { li.classList.add('done'); li.querySelector('.check').textContent = '✓'; }
   const p = courseProg(u.id, lesson(lid).courseId); if ($('prog-bar')) { $('prog-bar').style.width = p.pct + '%'; $('prog-text').textContent = `${p.done}/${p.total} aulas · ${p.pct}%`; }
@@ -322,7 +330,7 @@ function finishLesson(lid) {
 }
 ACTIONS.lesson = (d) => { const l = lesson(d.id), c = course(l.courseId); if (lockedLesson(l, lessonsOf(c.id), me(), c)) return toast('Conclua a aula anterior para liberar esta.', true); curLesson = l.id; rerender(); };
 ACTIONS['lesson-next'] = (d) => { const l = lesson(d.id), c = course(l.courseId); if (lockedLesson(l, lessonsOf(c.id), me(), c)) return toast('Conclua esta aula para liberar a próxima.', true); curLesson = l.id; rerender(); window.scrollTo(0, 0); };
-ACTIONS.complete = (d) => { finishLesson(Number(d.id)); rerender(); };
+ACTIONS.complete = async (d) => { await finishLesson(Number(d.id)); rerender(); };
 
 // Aba SOBRE E MATERIAIS: descrição completa e arquivos de apoio para baixar.
 function tabSobre(c, canView) {
@@ -389,12 +397,19 @@ VIEWS.quiz = async (cid) => {
   if (!isEnrolled(u.id, cid) && !isStaff()) fail('Inscreva-se no curso para fazer a prova.');
   const p = courseProg(u.id, cid); if (p.done < p.total && !isStaff()) fail('Conclua todas as aulas antes da prova.');
   const used = S.attempts.filter((a) => a.userId === u.id && a.courseId === cid).length; if (q.maxAttempts && used >= q.maxAttempts && !isStaff()) fail('Você usou todas as tentativas.');
+  const questions = LOCAL_MODE ? q.questions : ((await callRpc('get_quiz', { p_course_id: String(cid) }))?.questions || []); // sem gabarito
   app.innerHTML = `<div class="page-head"><div><a href="#/course/${cid}">← ${esc(c.title)}</a><h1>Prova final</h1></div><span class="muted">Nota mínima: ${q.passScore}%</span></div>
-    <form data-form="quiz" data-id="${cid}">${q.questions.map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}" required> ${esc(o)}</label>`).join('')}</div>`).join('')}
+    <form data-form="quiz" data-id="${cid}">${questions.map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" value="${j}" required> ${esc(o)}</label>`).join('')}</div>`).join('')}
     <button class="btn" type="submit">Enviar respostas</button></form>`;
 };
 // Corrige a prova, registra a tentativa e dá pontos/certificado na primeira aprovação.
 FORMS.quiz = async (d, form) => {
+  if (!LOCAL_MODE) { // a correção acontece no servidor; o gabarito só volta depois do envio
+    const cid = Number(form.dataset.id), total = form.querySelectorAll('.q').length;
+    const answers = Array.from({ length: total }, (_, i) => Number(d['q' + i]));
+    const res = await rpc('submit_quiz', { p_course_id: String(cid), p_answers: answers });
+    renderChrome(); showQuizResult({ ...res.attempt, userId: me().id, courseId: cid, answers }, res.certificate ? { code: res.certificate } : null, res.review); window.scrollTo(0, 0); return;
+  }
   const cid = Number(form.dataset.id), q = quizOf(cid), u = me();
   const answers = q.questions.map((x, i) => Number(d['q' + i])), right = answers.filter((a, i) => a === q.questions[i].correct).length;
   const score = Math.round((right / q.questions.length) * 100), passed = score >= q.passScore;
@@ -403,12 +418,12 @@ FORMS.quiz = async (d, form) => {
   let cert = null; if (first) { if (q.points > 0) award(u.id, q.points, `Prova aprovada: ${course(cid).title}`); cert = checkCourseCompletion(u.id, cid); }
   checkBadges(u.id); save(); renderChrome(); showQuizResult(att, cert); window.scrollTo(0, 0);
 };
-function showQuizResult(att, cert) {
+function showQuizResult(att, cert, review) {
   const c = course(att.courseId), q = quizOf(att.courseId), u = me(), left = q.maxAttempts ? q.maxAttempts - S.attempts.filter((a) => a.userId === u.id && a.courseId === att.courseId).length : Infinity;
   app.innerHTML = `<div class="panel"><h1>${att.passed ? 'Aprovado! 🎉' : 'Quase lá'}</h1><p class="price">Sua nota: ${att.score}%</p><p class="muted">Nota mínima: ${q.passScore}%</p>
     ${cert ? `<p>${tag('Certificado emitido ✓', 'ok')} <a class="btn gold small" href="#/certificate/${cert.code}">Ver certificado</a></p>` : ''}
     <div class="actions"><a class="btn ghost" href="#/course/${c.id}">Voltar ao curso</a>${!att.passed && left > 0 ? `<a class="btn" href="#/quiz/${c.id}">Tentar novamente</a>` : ''}</div></div>
-    ${q.questions.map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<div class="${j === x.correct ? 'right' : att.answers[i] === j ? 'wrong' : ''}" style="padding:6px 8px;border-radius:8px">${j === x.correct ? '✓' : att.answers[i] === j ? '✗' : '○'} ${esc(o)}</div>`).join('')}${x.explain ? `<p class="muted small">💡 ${esc(x.explain)}</p>` : ''}</div>`).join('')}`;
+    ${(review || q.questions).map((x, i) => `<div class="q"><strong>${i + 1}. ${esc(x.q)}</strong>${x.options.map((o, j) => `<div class="${j === x.correct ? 'right' : att.answers[i] === j ? 'wrong' : ''}" style="padding:6px 8px;border-radius:8px">${j === x.correct ? '✓' : att.answers[i] === j ? '✗' : '○'} ${esc(o)}</div>`).join('')}${x.explain ? `<p class="muted small">💡 ${esc(x.explain)}</p>` : ''}</div>`).join('')}`;
 }
 
 // ---------- CERTIFICADO (com verificação pública) ----------
@@ -476,7 +491,7 @@ VIEWS.store = () => {
     <h2>Histórico de pontos</h2><div class="panel table-wrap">${hist.length ? `<table><tr><th>Motivo</th><th>Pontos</th><th>Data</th></tr>${hist.map((h) => `<tr><td>${esc(h.reason)}</td><td>${h.delta > 0 ? '+' : ''}${h.delta}</td><td>${fmtDate(h.at)}</td></tr>`).join('')}</table>` : '<p class="muted">Assista a aulas e faça o check-in para ganhar pontos.</p>'}</div>`;
 };
 // Estorno: devolve os pontos gastos SEM aumentar o XP (nível e ranking não mudam).
-function refund(uid, amt, reason) { const u = user(uid); if (!u) return; u.points += amt; S.log.push({ userId: uid, delta: amt, reason, at: Date.now() }); }
+function refund(uid, amt, reason) { const u = user(uid); if (!u) return; u.points += amt; S.log.push({ id: nid(), userId: uid, delta: amt, reason, at: Date.now() }); }
 // Cancela um pedido: devolve pontos e estoque.
 function cancelRedemption(r, note) {
   if (['entregue', 'cancelado'].includes(r.status)) fail('Este pedido não pode ser cancelado.');
@@ -486,17 +501,18 @@ function cancelRedemption(r, note) {
 }
 // TROCAR PONTOS POR PRODUTO: confere estoque, saldo e limite; desconta pontos; cria o pedido com código.
 // Para mudar as regras da loja, edite esta ação.
-ACTIONS.redeem = (d) => {
+ACTIONS.redeem = async (d) => {
   const u = me(), p = product(d.id); if (!p || !p.active) fail('Produto indisponível.');
   if (!p.unlimited && p.stock <= 0) fail('Produto sem estoque.'); if (u.points < p.cost) fail('Pontos insuficientes.');
   const got = S.redemptions.filter((r) => r.userId === u.id && r.productId === p.id && r.status !== 'cancelado').length; if (p.limit && got >= p.limit) fail('Você atingiu o limite deste produto.');
   if (!confirm(`Trocar ${p.cost} pontos por "${p.name}"?`)) return;
+  if (!LOCAL_MODE) { const res = await rpc('redeem_product', { p_product_id: String(p.id) }); toast(`Troca realizada! Código: ${res.code}`); renderChrome(); rerender(); return; } // saldo, estoque e limite validados no servidor
   if (!p.unlimited) p.stock--; award(u.id, -p.cost, `Troca: ${p.name}`);
   const r = { id: nid(), userId: u.id, productId: p.id, productName: p.name, cost: p.cost, status: 'pendente', code: genCode(8), at: Date.now(), note: '' }; S.redemptions.push(r);
   S.users.filter((x) => x.role === 'admin').forEach((a) => notify(a.id, `🎁 Nova troca: ${p.name} (${u.name})`, '#/admin/redemptions'));
   checkBadges(u.id); audit(`Troca: ${p.name}`); save(); toast(`Troca realizada! Código: ${r.code}`); renderChrome(); rerender();
 };
-ACTIONS['redeem-cancel-mine'] = (d) => { const r = S.redemptions.find((x) => x.id === Number(d.id) && x.userId === me().id); if (!r || r.status !== 'pendente') fail('Só dá para cancelar pedidos pendentes.'); if (!confirm('Cancelar esta troca e receber os pontos de volta?')) return; cancelRedemption(r, 'Cancelado pelo usuário'); save(); renderChrome(); rerender(); };
+ACTIONS['redeem-cancel-mine'] = async (d) => { const r = S.redemptions.find((x) => x.id === Number(d.id) && x.userId === me().id); if (!r || r.status !== 'pendente') fail('Só dá para cancelar pedidos pendentes.'); if (!confirm('Cancelar esta troca e receber os pontos de volta?')) return; if (LOCAL_MODE) { cancelRedemption(r, 'Cancelado pelo usuário'); save(); } else await rpc('cancel_redemption', { p_redemption_id: String(r.id), p_note: 'Cancelado pelo usuário' }); renderChrome(); rerender(); };
 
 // ---------- RANKING ----------
 let rankingRefreshTimer = null;

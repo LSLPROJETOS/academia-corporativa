@@ -4,9 +4,10 @@
 
 - `index.html` carrega os arquivos em `assets/css/index/` e `assets/js/index/`.
 - `supabase/schema.sql` define o banco, as políticas RLS e o Storage.
+- `supabase/migration-regras-no-servidor.sql` aplica as regras de negócio do servidor e os RPCs usados pelo front-end.
 - `supabase/bootstrap-admin.sql` é executado manualmente no Supabase para configurar a primeira conta administrativa.
 
-O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute novamente `supabase/schema.sql` para aplicar as políticas e recursos atualizados, incluindo o mural de atualizações e seu bucket privado de imagens. A função `ranking_xp` calcula os placares semanal e mensal sem expor o histórico detalhado de pontos. O ranking considera a semana de segunda a domingo e o mês do calendário, atualizando os períodos automaticamente.
+O perfil permite montar um personagem visual, usado no menu, no perfil e no ranking. Em projetos Supabase já existentes, execute `supabase/schema.sql` para aplicar as políticas e recursos atualizados, incluindo o mural de atualizações e seu bucket privado de imagens; depois execute `supabase/migration-regras-no-servidor.sql` no SQL Editor do Supabase. A migração é idempotente e deve ser aplicada depois do schema. A função `ranking_xp` calcula os placares semanal e mensal sem expor o histórico detalhado de pontos. O ranking considera a semana de segunda a domingo e o mês do calendário, atualizando os períodos automaticamente.
 
 O mural mostra até três publicações na página inicial e mantém um histórico completo em **Atualizações**. A equipe pode criar comunicados, novidades e melhorias, salvar rascunhos, agendar ou fixar publicações e anexar imagens.
 
@@ -21,7 +22,7 @@ Cada pessoa pode escolher entre o tema claro e o tema escuro com degradê em **M
 - HTML, CSS e JavaScript entregues ao navegador podem ser lidos e copiados. Separar arquivos melhora manutenção, mas não protege o código-fonte.
 - A chave `publishable` do Supabase é usada no navegador e não deve ser tratada como senha. Nunca coloque uma chave `service_role` ou outro segredo em arquivos públicos.
 - As políticas RLS em `supabase/schema.sql` são parte essencial do controle de acesso. Mudanças de perfil e permissões devem continuar protegidas no banco, não apenas por verificações JavaScript.
-- Pontos, progresso, tentativas e certificados são dados com impacto de negócio. As gravações atualmente partem do cliente; antes de produção, valide quais valores precisam ser calculados ou confirmados por uma função confiável no servidor/banco, para que o usuário não possa definir seu próprio resultado.
+- Pontos, progresso, tentativas, certificados e inscrições devem ser alterados pelos RPCs da migração `supabase/migration-regras-no-servidor.sql`; aplique-a no Supabase antes de publicar o front-end correspondente.
 - A validação e a autorização no navegador melhoram a experiência, mas não substituem validação no servidor e políticas RLS.
 - PHP só deve ser introduzido como backend real, hospedado em servidor configurado, para operações que precisam de confiança ou segredos. Apenas renomear páginas para `.php` não protege o conteúdo que ainda é enviado ao navegador. A migração requer definir a hospedagem e a interface entre PHP, Supabase e a autenticação atual.
 
