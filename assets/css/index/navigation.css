@@ -39,3 +39,13 @@
   #nav a{border-radius:12px}
   .topbar.open #user-area{padding:10px 2px 4px}
 }
+
+.organizational-context{display:flex;align-items:center;gap:6px;max-width:460px}
+.org-context-field{display:block;min-width:105px;margin:0;font-size:.68rem;font-weight:700;color:var(--muted)}
+.org-context-field span{display:block;margin:0 0 2px 4px}
+.org-context-field select{width:100%;margin:0;padding:5px 24px 5px 8px;border-radius:9px;font-size:.76rem}
+#user-area{flex-wrap:wrap}
+@media(max-width:860px){
+  .organizational-context{flex:1 1 100%;max-width:none;order:5}
+  .org-context-field{flex:1 1 100px}
+}

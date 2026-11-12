@@ -10,6 +10,6 @@ const ROLE = { admin: 'Administrador', instrutor: 'Instrutor', aluno: 'Aluno' };
 // Usuário logado (precisa estar ativo e aprovado).
 const me = () => S.users.find((u) => u.id === sessionId && u.active && !u.pending) || null;
 const isAdmin = () => me()?.role === 'admin';
-const isStaff = () => ['admin', 'instrutor'].includes(me()?.role);
+const isStaff = () => isAdmin() || ['organization_admin', 'unit_admin', 'sector_manager'].includes(activeOrganizationRole());
 // Barra quem não tem permissão. Usada no início de toda ação administrativa.
 function need(level) { if ((level === 'admin' && !isAdmin()) || (level === 'staff' && !isStaff())) fail('Você não tem permissão para isso.'); }

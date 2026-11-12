@@ -14,6 +14,66 @@ function applyTheme() {
   $('brand').setAttribute('aria-label', `${S.settings.platformName} — Aprender abre possibilidades`);
   document.title = S.settings.platformName;
 }
+function organizationalContextControls() {
+  if (!O || !me()) return '';
+  const { organizationId, unitId, sectorId } = O.context;
+  const organizations = O.organizations.filter((organization) => organization.status === 'active');
+  const units = O.units.filter((unit) => unit.status === 'active' && unit.organizationId === organizationId);
+  const sectors = O.sectors.filter((sector) => sector.status === 'active'
+    && sector.organizationId === organizationId && sector.unitId === unitId);
+  const activeMemberships = O.memberships.filter((membership) =>
+    membership.active && membership.organizationId === organizationId);
+  const organizationWide = activeMemberships.some((membership) => !membership.unitId && !membership.sectorId);
+  const unitWide = activeMemberships.some((membership) =>
+    (!membership.unitId || membership.unitId === unitId) && !membership.sectorId);
+  const options = (items, selected, placeholder, label, disabled = false, emptyDisabled = false) => `<label class="org-context-field"><span>${label}</span><select data-org-context="${label === 'Organização' ? 'organization' : label === 'Unidade' ? 'unit' : 'sector'}" ${disabled ? 'disabled' : ''}>
+    <option value="" ${emptyDisabled ? 'disabled' : ''}>${placeholder}</option>${items.map((item) => `<option value="${esc(item.id)}" ${item.id === selected ? 'selected' : ''}>${esc(item.name)}</option>`).join('')}
+  </select></label>`;
+  return `<div class="organizational-context" aria-label="Escopo dos dados">
+    ${options(organizations, organizationId, isAdmin() ? 'Dados sem organização' : 'Selecione', 'Organização')}
+    ${options(units, unitId, organizationWide ? 'Todas as unidades' : 'Selecione uma unidade', 'Unidade', !organizationId, Boolean(organizationId && !organizationWide))}
+    ${options(sectors, sectorId, unitWide ? 'Todos os setores' : 'Selecione um setor', 'Setor', !unitId, Boolean(unitId && !unitWide))}
+  </div>`;
+}
+async function handleOrganizationalContextChange(field, value) {
+  const next = { ...O.context };
+  if (field === 'organization') {
+    next.organizationId = value || null; next.unitId = null; next.sectorId = null;
+    if (value && !isAdmin()) {
+      const membership = O.memberships.find((item) => item.organizationId === value && item.active);
+      if (membership) {
+        next.unitId = membership.unitId;
+        next.sectorId = membership.sectorId;
+      }
+    }
+  } else if (field === 'unit') {
+    next.unitId = value || null; next.sectorId = null;
+    if (value && !isAdmin()) {
+      const unitWide = O.memberships.some((membership) => membership.active
+        && membership.organizationId === next.organizationId
+        && (!membership.unitId || membership.unitId === value)
+        && !membership.sectorId);
+      if (!unitWide) {
+        next.sectorId = O.memberships.find((membership) => membership.active
+          && membership.organizationId === next.organizationId
+          && membership.unitId === value && membership.sectorId)?.sectorId || null;
+      }
+    }
+  } else {
+    next.sectorId = value || null;
+  }
+  if (next.organizationId === O.context.organizationId
+      && next.unitId === O.context.unitId && next.sectorId === O.context.sectorId) return;
+  $('app').innerHTML = '<div class="panel empty">Atualizando o escopo dos dados…</div>';
+  try {
+    await changeOrganizationalContext(next.organizationId, next.unitId, next.sectorId);
+    await route(false);
+  } catch (error) {
+    toast(error.message, true);
+    renderChrome();
+    await route(false);
+  }
+}
 // Desenha o menu e a área do usuário (pontos, sino, perfil, sair).
 function renderChrome() {
   const u = me(); applyTheme();
@@ -23,7 +83,7 @@ function renderChrome() {
   nav.innerHTML = L('home', 'Início', 'home') + L('courses', 'Cursos', 'courses') + L('mine', 'Meus cursos', 'mine') + L('videos', 'Vídeos', 'videos') + L('store', 'Loja', 'store') + L('ranking', 'Ranking', 'ranking')
     + (isStaff() ? L('admin/dashboard', isAdmin() ? 'Administração' : 'Gestão', 'admin') : '');
   const unread = S.notifications.filter((n) => n.userId === u.id && !n.read).length;
-  $('user-area').innerHTML = `<a class="chip coins" href="#/store" title="Seu saldo">${u.points} pts</a>
+  $('user-area').innerHTML = `${organizationalContextControls()}<a class="chip coins" href="#/store" title="Seu saldo">${u.points} pts</a>
     <a class="icon-btn" href="#/notifications" aria-label="Notificações">🔔${unread ? `<span class="dot">${unread}</span>` : ''}</a>
     <a class="user-link" href="#/profile">${avatar(u, 'sm')}<span class="hide-sm">${esc(u.name.split(' ')[0])}</span></a>
     <a class="icon-btn" href="#/account" aria-label="Minha conta">⚙</a><button class="link-btn" data-action="logout">Sair</button>`;
@@ -42,6 +102,10 @@ async function route(scroll = true) {
     if (page === 'verify') { renderChrome(); await viewVerify(a); return; } // verificação pública de certificado
     const u = me(); renderChrome();
     if (!u) { page === 'register' ? viewRegister() : viewLogin(); return; }
+    if (!isAdmin() && !O.context.organizationId) {
+      app.innerHTML = '<section class="panel empty"><h1>Vínculo organizacional necessário</h1><p>Esta conta ainda não tem acesso a uma organização ativa. Solicite ao administrador que associe seu usuário a uma unidade ou setor.</p></section>';
+      return;
+    }
     if (u.mustChange && page !== 'account') { go('#/account'); return; } // troca de senha obrigatória
     if (scroll) closeModal();
     await (VIEWS[page] || VIEWS.home)(a, b);
@@ -159,8 +223,19 @@ FORMS.resetpassword = async (d) => {
 };
 ACTIONS.logout = async () => {
   audit('Logout'); save(); clearTimeout(saveTimer);
-  if (!LOCAL_MODE) { await saveQueue; await syncRemoteState(); }
-  else localStorage.removeItem(LOCAL_SESSION_KEY);
-  if (!LOCAL_MODE) await backend.auth.signOut();
+  let saveError = null;
+  if (!LOCAL_MODE) {
+    try { await saveQueue; await syncRemoteState(); }
+    catch (error) { saveError = error; }
+    try {
+      const { error } = await backend.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      sessionId = null; sessionAuthId = null; remoteReady = false; go('#/login');
+      toast(`Não foi possível encerrar a sessão no Supabase: ${error.message}`, true);
+      return;
+    }
+  } else localStorage.removeItem(LOCAL_SESSION_KEY);
   sessionId = null; sessionAuthId = null; remoteReady = false; go('#/login');
+  if (saveError) toast(`Sessão encerrada, mas houve uma falha ao salvar: ${saveError.message}`, true);
 };

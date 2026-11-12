@@ -22,6 +22,14 @@ ACTIONS.menu = () => $('topbar').classList.toggle('open');
 // Digitação e filtros: atualiza listas na hora (data-filter="Nome.campo"), mostra campos da aula e muda a velocidade do vídeo.
 function onInput(e) {
   const el = e.target;
+  if (e.type === 'change' && el.dataset?.orgContext) {
+    handleOrganizationalContextChange(el.dataset.orgContext, el.value);
+    return;
+  }
+  if (e.type === 'change' && el.dataset?.organizationField) {
+    refreshOrganizationForm(el.form);
+    return;
+  }
   if (el.dataset && el.dataset.filter) { const [ns, key] = el.dataset.filter.split('.'); FILTERS[ns][key] = el.type === 'checkbox' ? el.checked : el.value; if (REFRESH[ns]) REFRESH[ns](); return; }
   if (el.name === 'type' && el.form && el.form.dataset.form === 'lesson') syncLessonForm(el.form);
   if (el.dataset && el.dataset.speed !== undefined) { const v = $('player'); if (v) v.playbackRate = Number(el.value); }

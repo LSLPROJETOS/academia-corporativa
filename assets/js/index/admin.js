@@ -2,18 +2,305 @@
 // 8. TELAS DE ADMINISTRAÇÃO E GESTÃO
 // Administrador vê todas as abas. Instrutor vê só Painel, Cursos, Relatórios e Atualizações.
 // ============================================================================
-const ADMIN_TABS = [['dashboard', 'Painel'], ['users', 'Usuários'], ['groups', 'Grupos e atribuições'], ['courses', 'Cursos'], ['store', 'Produtos da loja'], ['redemptions', 'Trocas'], ['reports', 'Relatórios'], ['announcements', 'Atualizações'], ['settings', 'Configurações'], ['data', 'Dados e logs']];
+const ADMIN_TABS = [['dashboard', 'Painel'], ['organization', 'Organizações'], ['users', 'Usuários'], ['groups', 'Grupos e atribuições'], ['courses', 'Cursos'], ['store', 'Produtos da loja'], ['redemptions', 'Trocas'], ['reports', 'Relatórios'], ['announcements', 'Atualizações'], ['settings', 'Configurações'], ['data', 'Dados e logs']];
 const STAFF_TABS = ['dashboard', 'courses', 'reports', 'announcements'];
 const AT = {}; // AT[aba] devolve o HTML de cada aba
 
 VIEWS.admin = async (tab, arg) => {
   need('staff'); tab = tab || 'dashboard';
-  const allowed = isAdmin() ? ADMIN_TABS : ADMIN_TABS.filter((t) => STAFF_TABS.includes(t[0])); if (!allowed.some((t) => t[0] === tab)) tab = 'dashboard';
+  const canManageStructure = isAdmin() || ['organization_admin', 'unit_admin'].includes(activeOrganizationRole());
+  const allowed = isAdmin() ? ADMIN_TABS
+    : ADMIN_TABS.filter((t) => STAFF_TABS.includes(t[0]) || (t[0] === 'organization' && canManageStructure));
+  if (!allowed.some((t) => t[0] === tab)) tab = 'dashboard';
   app.innerHTML = `<div class="page-head admin-page-head"><div><span class="eyebrow">ACADEMIA CORPORATIVA</span><h1>${isAdmin() ? 'Gestão do aprendizado' : 'Espaço de gestão'}</h1></div></div><div class="tabs admin-tabs">${allowed.map(([k, l]) => `<a class="${k === tab ? 'on' : ''}" href="#/admin/${k}">${l}</a>`).join('')}</div><div id="admin-body"></div>`;
   $('admin-body').innerHTML = await AT[tab](arg);
+  if (tab === 'organization') {
+    $('admin-body').querySelectorAll('form[data-form]').forEach(refreshOrganizationForm);
+  }
   if (tab === 'data') fillStorage();
 };
 const barChart = (items) => { const max = Math.max(1, ...items.map((i) => i.value)); return `<div class="vbars">${items.map((i) => `<div title="${i.value}"><small>${i.value || ''}</small><div class="b" style="height:${(i.value / max) * 78}%"></div><small>${i.label}</small></div>`).join('')}</div>`; };
+
+function organizationField(label, name, items, selected, placeholder, disabled = false) {
+  return `<label>${label}<select name="${name}" data-organization-field="${name}" ${disabled ? 'disabled' : ''}>
+    <option value="">${esc(placeholder)}</option>${items.map((item) => `<option value="${esc(item.id)}" ${item.id === selected ? 'selected' : ''}>${esc(item.name)}</option>`).join('')}
+  </select></label>`;
+}
+function managedUnitsFor(organizationId) {
+  return O.units.filter((unit) => unit.status === 'active' && unit.organizationId === organizationId
+    && (isAdmin()
+      || (activeOrganizationRole() === 'organization_admin' && organizationId === O.context.organizationId)
+      || (activeOrganizationRole() === 'unit_admin' && unit.id === O.context.unitId)));
+}
+function refreshOrganizationForm(form) {
+  if (!form) return;
+  const orgSelect = form.elements.namedItem('organizationId');
+  const unitSelect = form.elements.namedItem('unitId');
+  const sectorSelect = form.elements.namedItem('sectorId');
+  const roleSelect = form.elements.namedItem('role');
+  if (!orgSelect) return;
+  orgSelect.required = true;
+  const orgId = orgSelect.value;
+  const units = managedUnitsFor(orgId);
+  const organizationWide = roleSelect?.value === 'organization_admin';
+  if (unitSelect) {
+    const previous = units.some((unit) => unit.id === unitSelect.value) ? unitSelect.value : '';
+    unitSelect.innerHTML = `<option value="">Selecione uma unidade</option>${units.map((unit) => `<option value="${esc(unit.id)}">${esc(unit.name)}</option>`).join('')}`;
+    unitSelect.value = organizationWide ? '' : previous;
+    unitSelect.disabled = !orgId || organizationWide;
+    unitSelect.required = form.dataset.form === 'sector-save'
+      || (form.dataset.form === 'membership-save' && !organizationWide);
+  }
+  const unitId = unitSelect?.value || '';
+  const sectors = O.sectors.filter((sector) => sector.organizationId === orgId
+    && sector.unitId === unitId && sector.status === 'active');
+  if (sectorSelect) {
+    const previous = sectors.some((sector) => sector.id === sectorSelect.value)
+      ? sectorSelect.value
+      : sectors.some((sector) => sector.id === O.context.sectorId) ? O.context.sectorId : '';
+    sectorSelect.innerHTML = `<option value="">Selecione um setor (opcional)</option>${sectors.map((sector) => `<option value="${esc(sector.id)}">${esc(sector.name)}</option>`).join('')}`;
+    sectorSelect.value = roleSelect?.value === 'sector_manager' ? previous : '';
+    sectorSelect.disabled = !unitId || ['organization_admin', 'unit_admin'].includes(roleSelect?.value);
+    sectorSelect.required = form.dataset.form === 'membership-save'
+      && roleSelect?.value === 'sector_manager';
+  }
+}
+
+AT.organization = async () => {
+  need('staff');
+  const canManageMembers = isAdmin() || ['organization_admin', 'unit_admin'].includes(activeOrganizationRole());
+  const canCreateUnit = isAdmin() || activeOrganizationRole() === 'organization_admin';
+  let legacy = [];
+  const { data: auditRows, error: auditError } = await backend.from('organization_audit_logs')
+    .select('id,actor_id,operation,entity_type,entity_id,created_at,organization_id,unit_id,sector_id')
+    .order('created_at', { ascending: false }).limit(100);
+  if (auditError) throw auditError;
+  if (isAdmin()) {
+    const { data, error } = await backend.from('app_records')
+      .select('id,collection,record_id,created_at')
+      .is('organization_id', null)
+      .not('collection', 'in', '("settings","departments")')
+      .order('created_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    legacy = data || [];
+  }
+  const activeOrganizations = O.organizations.filter((item) => item.status === 'active');
+  const units = O.units.filter((item) => item.status === 'active');
+  const manageableOrganizations = isAdmin() ? activeOrganizations
+    : activeOrganizations.filter((organization) => organization.id === O.context.organizationId);
+  const manageableUnits = O.units.filter((unit) => isAdmin()
+    || (activeOrganizationRole() === 'organization_admin' && unit.organizationId === O.context.organizationId)
+    || (activeOrganizationRole() === 'unit_admin' && unit.id === O.context.unitId));
+  const users = S.users.filter((item) => item.authId);
+  const memberships = O.memberships.filter((item) => item.userId !== sessionAuthId || item.active);
+  return `<section class="page-head"><div><span class="eyebrow">ESTRUTURA ORGANIZACIONAL</span><h2>Organizações, unidades e setores</h2></div></section>
+    ${isAdmin() ? panel(`<h3>Nova organização</h3><form data-form="organization-create" class="row">
+      <label>Nome da organização<input name="name" required minlength="2" maxlength="160"></label>
+      <div><button class="btn" type="submit">Criar organização</button></div>
+    </form>`) : ''}
+    ${panel(`<h3>Organizações</h3>${O.organizations.length ? `<div class="table-wrap"><table>
+      <tr><th>Organização</th><th>Situação</th><th>Unidades</th><th>Ações</th></tr>
+      ${O.organizations.map((item) => {
+        const manageable = isAdmin()
+          || (item.id === O.context.organizationId && activeOrganizationRole() === 'organization_admin');
+        return `<tr><td>${esc(item.name)}</td><td>${item.status === 'active' ? tag('Ativa', 'ok') : tag('Desativada', 'bad')}</td>
+          <td>${O.units.filter((unit) => unit.organizationId === item.id).length}</td>
+          <td>${manageable ? `<form data-form="organization-save" data-id="${esc(item.id)}" class="actions">
+            <input name="name" aria-label="Nome da organização" value="${esc(item.name)}" required minlength="2" maxlength="160">
+            <select name="status" aria-label="Situação"><option value="active" ${item.status === 'active' ? 'selected' : ''}>Ativa</option><option value="inactive" ${item.status === 'inactive' ? 'selected' : ''}>Desativada</option></select>
+            <button class="btn small" type="submit">Salvar</button></form>` : '—'}</td></tr>`;
+      }).join('')}</table></div>` : '<p class="muted">Nenhuma organização disponível. Um administrador geral pode criar a primeira.</p>'}`)}
+    ${panel(`<h3>Unidades</h3>${canCreateUnit ? `<form data-form="unit-save" class="row">
+      ${organizationField('Organização', 'organizationId', manageableOrganizations, O.context.organizationId, 'Selecione uma organização')}
+      <label>Nome da unidade<input name="name" required minlength="2" maxlength="160"></label>
+      <div><button class="btn" type="submit">Adicionar unidade</button></div>
+    </form>` : ''}${O.units.length ? `<div class="table-wrap"><table><tr><th>Unidade</th><th>Organização</th><th>Situação</th><th>Setores</th><th></th></tr>
+      ${O.units.map((unit) => `<tr><td>${esc(unit.name)}</td><td>${esc(O.organizations.find((org) => org.id === unit.organizationId)?.name || '—')}</td>
+        <td>${unit.status === 'active' ? tag('Ativa', 'ok') : tag('Desativada', 'bad')}</td>
+        <td>${O.sectors.filter((sector) => sector.unitId === unit.id).length}</td>
+        <td>${manageableUnits.some((managed) => managed.id === unit.id) ? `<div class="actions"><button class="btn small ghost" data-action="unit-edit" data-id="${esc(unit.id)}">Editar</button><button class="btn small ghost" data-action="unit-toggle" data-id="${esc(unit.id)}">${unit.status === 'active' ? 'Desativar' : 'Ativar'}</button></div>` : ''}</td></tr>`).join('')}
+    </table></div>` : '<p class="muted">Nenhuma unidade cadastrada.</p>'}`)}
+    ${panel(`<h3>Setores</h3>${canManageMembers ? `<form data-form="sector-save" class="row">
+      ${organizationField('Organização', 'organizationId', manageableOrganizations, O.context.organizationId, 'Selecione uma organização')}
+      ${organizationField('Unidade', 'unitId', manageableUnits.filter((unit) => unit.organizationId === O.context.organizationId), O.context.unitId, 'Selecione uma unidade', !O.context.organizationId)}
+      <label>Nome do setor<input name="name" required minlength="2" maxlength="160"></label>
+      <div><button class="btn" type="submit">Adicionar setor</button></div>
+    </form>` : ''}${O.sectors.length ? `<div class="table-wrap"><table><tr><th>Setor</th><th>Unidade</th><th>Organização</th><th>Situação</th><th></th></tr>
+      ${O.sectors.map((sector) => `<tr><td>${esc(sector.name)}</td><td>${esc(O.units.find((unit) => unit.id === sector.unitId)?.name || '—')}</td>
+        <td>${esc(O.organizations.find((org) => org.id === sector.organizationId)?.name || '—')}</td>
+        <td>${sector.status === 'active' ? tag('Ativo', 'ok') : tag('Desativado', 'bad')}</td>
+        <td>${manageableUnits.some((unit) => unit.id === sector.unitId) ? `<div class="actions"><button class="btn small ghost" data-action="sector-edit" data-id="${esc(sector.id)}">Editar</button><button class="btn small ghost" data-action="sector-toggle" data-id="${esc(sector.id)}">${sector.status === 'active' ? 'Desativar' : 'Ativar'}</button></div>` : ''}</td></tr>`).join('')}
+    </table></div>` : '<p class="muted">Nenhum setor cadastrado.</p>'}`)}
+    ${canManageMembers ? panel(`<h3>Vínculos e permissões</h3><p class="muted small">Um usuário pode ter vários vínculos. Desative o vínculo antigo para registrar uma transferência sem apagar o histórico.</p>
+      <form data-form="membership-save" class="row">
+        ${sel('Usuário', 'userId', users.map((user) => [user.authId, `${user.name} · ${user.email}`]), '')}
+        ${organizationField('Organização', 'organizationId', manageableOrganizations, O.context.organizationId, 'Selecione uma organização')}
+        ${organizationField('Unidade', 'unitId', manageableUnits.filter((unit) => unit.organizationId === O.context.organizationId), O.context.unitId, 'Selecione uma unidade (opcional)', !O.context.organizationId)}
+        <label>Setor<select name="sectorId" data-organization-field="sectorId" disabled><option value="">Selecione um setor (opcional)</option></select></label>
+        <label>Função<select name="role" data-organization-field="role">
+          <option value="organization_admin">Administrador da organização</option><option value="unit_admin">Administrador da unidade</option>
+          <option value="sector_manager">Gestor de setor</option><option value="collaborator" selected>Colaborador</option>
+        </select></label>
+        <div><button class="btn" type="submit">Salvar vínculo</button></div>
+      </form>
+      ${memberships.length ? `<div class="table-wrap"><table><tr><th>Usuário</th><th>Escopo</th><th>Função</th><th>Situação</th><th></th></tr>
+        ${memberships.map((membership) => {
+          const user = users.find((item) => item.authId === membership.userId);
+          const org = O.organizations.find((item) => item.id === membership.organizationId);
+          const unit = O.units.find((item) => item.id === membership.unitId);
+          const sector = O.sectors.find((item) => item.id === membership.sectorId);
+          return `<tr><td>${esc(user?.name || 'Usuário')}</td><td>${esc([org?.name, unit?.name, sector?.name].filter(Boolean).join(' · '))}</td>
+            <td>${esc(membership.role.replace(/_/g, ' '))}</td><td>${membership.active ? tag('Ativo', 'ok') : tag('Desativado', 'bad')}</td>
+            <td>${membership.userId !== sessionAuthId ? `<button class="btn small ghost" data-action="membership-toggle" data-user="${esc(membership.userId)}" data-org="${esc(membership.organizationId)}" data-unit="${esc(membership.unitId || '')}" data-sector="${esc(membership.sectorId || '')}" data-role="${esc(membership.role)}" data-active="${membership.active}">${membership.active ? 'Desativar vínculo' : 'Reativar vínculo'}</button>` : '—'}</td></tr>`;
+        }).join('')}</table></div>` : '<p class="muted">Nenhum vínculo gerenciável.</p>'}`) : ''}
+    ${isAdmin() ? panel(`<h3>Registros antigos sem associação</h3><p class="muted small">Os dados anteriores foram preservados sem organização, unidade ou setor. Associe cada registro somente após validação administrativa; nada será classificado automaticamente.</p>
+      ${legacy.length ? `<div class="table-wrap"><table><tr><th>Módulo</th><th>Identificador</th><th>Criado em</th><th></th></tr>
+        ${legacy.map((row) => `<tr><td>${esc(row.collection)}</td><td>${esc(row.record_id)}</td><td>${fmtDate(Date.parse(row.created_at))}</td>
+          <td><button class="btn small" data-action="legacy-associate" data-id="${row.id}">Associar</button></td></tr>`).join('')}</table></div>` : '<p class="muted">Não há registros legados pendentes de associação.</p>'}`) : ''}
+    ${panel(`<h3>Auditoria organizacional</h3>${auditRows?.length ? `<div class="table-wrap"><table>
+      <tr><th>Quando</th><th>Responsável</th><th>Operação</th><th>Registro</th></tr>
+      ${auditRows.map((entry) => `<tr><td>${fmtDate(Date.parse(entry.created_at))}</td>
+        <td>${esc(S.users.find((user) => user.authId === entry.actor_id)?.name || 'Sistema')}</td>
+        <td>${esc(entry.operation)}</td><td>${esc(entry.entity_type)} · ${esc(entry.entity_id)}</td></tr>`).join('')}
+    </table></div>` : '<p class="muted">Nenhuma alteração registrada neste escopo.</p>'}`)}
+    <p class="muted small">Organizações, unidades e setores são desativados logicamente. Os identificadores permanecem estáveis e os registros associados são preservados.</p>`;
+};
+FORMS['organization-create'] = async (data) => {
+  need('admin');
+  if (data.name.trim().length < 2) fail('Informe o nome da organização.');
+  await rpc('create_organization', { p_name: data.name.trim() });
+  toast('Organização criada.');
+  rerender();
+};
+FORMS['organization-save'] = async (data, form) => {
+  need('staff');
+  if (data.name.trim().length < 2) fail('Informe o nome da organização.');
+  if (data.status === 'inactive' && !confirm('Desativar a organização? Os registros e vínculos serão preservados, mas os membros perderão o acesso.')) return;
+  await rpc('save_organization', {
+    p_organization_id: form.dataset.id, p_name: data.name.trim(), p_status: data.status
+  });
+  toast('Organização atualizada.');
+  rerender();
+};
+FORMS['unit-save'] = async (data, form) => {
+  need('staff');
+  if (data.name.trim().length < 2) fail('Informe o nome da unidade.');
+  const editing = Boolean(form.dataset.id);
+  if (!editing && !data.organizationId) fail('Selecione uma organização.');
+  await rpc('save_unit', {
+    p_operation: editing ? 'update' : 'create', p_unit_id: form.dataset.id || null,
+    p_organization_id: data.organizationId || null,
+    p_name: data.name.trim(), p_status: 'active'
+  });
+  toast(editing ? 'Unidade atualizada.' : 'Unidade criada.');
+  rerender();
+};
+FORMS['sector-save'] = async (data, form) => {
+  need('staff');
+  if (data.name.trim().length < 2) fail('Informe o nome do setor.');
+  const editing = Boolean(form.dataset.id);
+  if (!editing && (!data.organizationId || !data.unitId)) fail('Selecione uma organização e uma unidade.');
+  await rpc('save_sector', {
+    p_operation: editing ? 'update' : 'create', p_sector_id: form.dataset.id || null,
+    p_organization_id: data.organizationId || null, p_unit_id: data.unitId || null, p_name: data.name.trim()
+  });
+  toast(editing ? 'Setor atualizado.' : 'Setor criado.');
+  rerender();
+};
+FORMS['membership-save'] = async (data) => {
+  need('staff');
+  if (!data.userId || !data.organizationId) fail('Selecione um usuário e uma organização.');
+  await rpc('set_organizational_membership', {
+    p_user_id: data.userId, p_organization_id: data.organizationId,
+    p_unit_id: data.unitId || null, p_sector_id: data.sectorId || null,
+    p_role: data.role, p_active: true
+  });
+  toast('Vínculo salvo.');
+  rerender();
+};
+ACTIONS['unit-toggle'] = async (data) => {
+  need('staff');
+  const unit = O.units.find((item) => item.id === data.id);
+  if (!unit) fail('Unidade não encontrada.');
+  const deactivate = unit.status === 'active';
+  if (deactivate && !confirm(`Desativar "${unit.name}"? Registros e setores serão preservados.`)) return;
+  await rpc('save_unit', {
+    p_operation: deactivate ? 'deactivate' : 'activate', p_unit_id: unit.id,
+    p_organization_id: unit.organizationId, p_name: unit.name, p_status: deactivate ? 'inactive' : 'active'
+  });
+  toast(`Unidade ${deactivate ? 'desativada' : 'ativada'}.`);
+  rerender();
+};
+ACTIONS['unit-edit'] = (data) => {
+  need('staff');
+  const unit = O.units.find((item) => item.id === data.id);
+  if (!unit) fail('Unidade não encontrada.');
+  openModal('Editar unidade', `<form data-form="unit-save" data-id="${esc(unit.id)}">
+    <input type="hidden" name="organizationId" value="${esc(unit.organizationId)}">
+    ${fld('Nome da unidade', 'name', unit.name, 'required minlength="2" maxlength="160"')}
+    <button class="btn" type="submit">Salvar alterações</button>
+  </form>`);
+};
+ACTIONS['sector-toggle'] = async (data) => {
+  need('staff');
+  const sector = O.sectors.find((item) => item.id === data.id);
+  if (!sector) fail('Setor não encontrado.');
+  const deactivate = sector.status === 'active';
+  if (deactivate && !confirm(`Desativar "${sector.name}"? Os registros serão preservados.`)) return;
+  await rpc('save_sector', {
+    p_operation: deactivate ? 'deactivate' : 'activate', p_sector_id: sector.id,
+    p_organization_id: sector.organizationId, p_unit_id: sector.unitId, p_name: sector.name
+  });
+  toast(`Setor ${deactivate ? 'desativado' : 'ativado'}.`);
+  rerender();
+};
+ACTIONS['sector-edit'] = (data) => {
+  need('staff');
+  const sector = O.sectors.find((item) => item.id === data.id);
+  if (!sector) fail('Setor não encontrado.');
+  openModal('Editar setor', `<form data-form="sector-save" data-id="${esc(sector.id)}">
+    <input type="hidden" name="organizationId" value="${esc(sector.organizationId)}">
+    <input type="hidden" name="unitId" value="${esc(sector.unitId)}">
+    ${fld('Nome do setor', 'name', sector.name, 'required minlength="2" maxlength="160"')}
+    <button class="btn" type="submit">Salvar alterações</button>
+  </form>`);
+};
+ACTIONS['membership-toggle'] = async (data) => {
+  need('staff');
+  if (data.user === sessionAuthId) fail('Use outro administrador para alterar seu próprio vínculo.');
+  const active = data.active !== 'true';
+  if (!active && !confirm('Desativar este vínculo? O histórico será mantido.')) return;
+  await rpc('set_organizational_membership', {
+    p_user_id: data.user, p_organization_id: data.org,
+    p_unit_id: data.unit || null, p_sector_id: data.sector || null,
+    p_role: data.role, p_active: active
+  });
+  toast(`Vínculo ${active ? 'reativado' : 'desativado'}.`);
+  rerender();
+};
+ACTIONS['legacy-associate'] = (data) => {
+  need('admin');
+  const row = { id: data.id };
+  openModal('Associar registro antigo', `<p class="muted">Confirme o destino correto do registro ${esc(row.id)}. Esta ação altera apenas o escopo, não o conteúdo original.</p>
+    <form data-form="legacy-associate" data-id="${esc(row.id)}">
+      ${organizationField('Organização', 'organizationId', O.organizations.filter((item) => item.status === 'active'), O.context.organizationId, 'Selecione uma organização')}
+      ${organizationField('Unidade', 'unitId', O.units.filter((item) => item.organizationId === O.context.organizationId && item.status === 'active'), O.context.unitId, 'Nenhuma unidade')}
+      ${organizationField('Setor', 'sectorId', O.sectors.filter((item) => item.unitId === O.context.unitId && item.status === 'active'), O.context.sectorId, 'Nenhum setor')}
+      <button class="btn" type="submit">Confirmar associação</button>
+    </form>`, true);
+};
+FORMS['legacy-associate'] = async (data, form) => {
+  need('admin');
+  if (!data.organizationId) fail('Selecione uma organização.');
+  if (!confirm('Confirma que este registro pertence à organização, unidade e setor selecionados?')) return;
+  await rpc('associate_legacy_app_record', {
+    p_record_id: form.dataset.id, p_organization_id: data.organizationId,
+    p_unit_id: data.unitId || null, p_sector_id: data.sectorId || null
+  });
+  closeModal();
+  toast('Registro associado e auditado.');
+  rerender();
+};
 
 // ---------- PAINEL ----------
 AT.dashboard = () => {
@@ -367,7 +654,8 @@ async function uploadAnnouncementImage(id, file) {
   if (LOCAL_MODE) return { imageData: dataURL };
   const blob = await (await fetch(dataURL)).blob();
   if (blob.size > 700 * 1024) fail('A imagem continua muito grande após a compressão. Escolha uma imagem menor.');
-  const path = `${id}/${Date.now()}-${nid()}.jpg`;
+  if (!O.context.organizationId) fail('Selecione uma organização antes de anexar imagens.');
+  const path = `${O.context.organizationId}/${O.context.unitId || '_'}/${O.context.sectorId || '_'}/${id}/${Date.now()}-${nid()}.jpg`;
   const { error } = await backend.storage.from('announcement-images').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
   if (error) fail(error.message);
   return { imagePath: path };

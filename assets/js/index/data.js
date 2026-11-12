@@ -48,6 +48,7 @@ let S = DEFAULTS();
 let sessionId = null, sessionAuthId = null, backendReady = false, remoteReady = false;
 let saveTimer = null, saveQueue = Promise.resolve();
 let localPasswords = {};
+let O = { organizations: [], units: [], sectors: [], memberships: [], context: { organizationId: null, unitId: null, sectorId: null } };
 
 // Gravações locais persistem no navegador. O modo remoto continua disponível para configuração futura.
 function save() {
@@ -105,6 +106,79 @@ async function callRpc(name, args = {}) {
   const { data, error } = await backend.rpc(name, args);
   if (error) throw new Error(error.message);
   return data;
+}
+async function loadOrganizationalState(platformAdmin = false) {
+  const data = await callRpc('organizational_bootstrap');
+  O = {
+    organizations: data.organizations || [],
+    units: data.units || [],
+    sectors: data.sectors || [],
+    memberships: data.memberships || [],
+    context: data.context || { organizationId: null, unitId: null, sectorId: null }
+  };
+  const contextIsValid = O.context.organizationId
+    && O.organizations.some((organization) =>
+      organization.id === O.context.organizationId && organization.status === 'active')
+    && (!O.context.unitId || O.units.some((unit) =>
+      unit.id === O.context.unitId && unit.status === 'active'))
+    && (!O.context.sectorId || O.sectors.some((sector) =>
+      sector.id === O.context.sectorId && sector.status === 'active'))
+    && O.memberships.some((membership) => membership.userId === sessionAuthId && membership.active
+      && membership.organizationId === O.context.organizationId
+      && (!membership.unitId || membership.unitId === O.context.unitId)
+      && (!membership.sectorId || membership.sectorId === O.context.sectorId));
+  if (!platformAdmin && !contextIsValid) {
+    const membership = O.memberships.find((item) => item.userId === sessionAuthId && item.active
+      && O.organizations.some((organization) => organization.id === item.organizationId && organization.status === 'active')
+      && (!item.unitId || O.units.some((unit) => unit.id === item.unitId && unit.status === 'active'))
+      && (!item.sectorId || O.sectors.some((sector) => sector.id === item.sectorId && sector.status === 'active')));
+    const { error } = await backend.rpc('set_active_organizational_context', {
+      p_organization_id: membership?.organizationId || null,
+      p_unit_id: membership?.unitId || null,
+      p_sector_id: membership?.sectorId || null
+    });
+    if (error) throw new Error(error.message);
+    const refreshed = await callRpc('organizational_bootstrap');
+    O.context = refreshed.context || O.context;
+  }
+}
+const activeOrganizationRole = () => {
+  const { organizationId, unitId, sectorId } = O.context;
+  if (!organizationId || !O.organizations.some((organization) =>
+    organization.id === organizationId && organization.status === 'active')) return '';
+  if (unitId && !O.units.some((unit) => unit.id === unitId && unit.status === 'active')) return '';
+  if (sectorId && !O.sectors.some((sector) => sector.id === sectorId && sector.status === 'active')) return '';
+  const rolePriority = { organization_admin: 4, unit_admin: 3, sector_manager: 2, collaborator: 1 };
+  return O.memberships.filter((membership) =>
+    membership.active
+    && membership.organizationId === organizationId
+    && (!membership.unitId || membership.unitId === unitId)
+    && (!membership.sectorId || membership.sectorId === sectorId)
+  ).sort((left, right) => rolePriority[right.role] - rolePriority[left.role])[0]?.role || '';
+};
+function applyRecordScope(query) {
+  const { organizationId, unitId, sectorId } = O.context;
+  query = organizationId ? query.eq('organization_id', organizationId) : query.is('organization_id', null);
+  if (unitId) query = query.or(`unit_id.is.null,unit_id.eq.${unitId}`);
+  if (sectorId) query = query.or(`sector_id.is.null,sector_id.eq.${sectorId}`);
+  return query;
+}
+async function changeOrganizationalContext(organizationId, unitId, sectorId) {
+  if (LOCAL_MODE || !backend || !sessionAuthId) return;
+  clearTimeout(saveTimer);
+  await saveQueue;
+  await syncRemoteState();
+  const { error } = await backend.rpc('set_active_organizational_context', {
+    p_organization_id: organizationId || null,
+    p_unit_id: unitId || null,
+    p_sector_id: sectorId || null
+  });
+  if (error) throw new Error(error.message);
+  remoteReady = false;
+  S = DEFAULTS();
+  const { data: auth, error: authError } = await backend.auth.getSession();
+  if (authError) throw authError;
+  if (auth.session?.user) await loadRemoteState(auth.session.user);
 }
 // Envia o que está pendente, executa a função no servidor e recarrega o estado (saldo, XP, registros).
 async function rpc(name, args = {}) {
@@ -169,24 +243,35 @@ function ownerAuthId(internalId) {
 function rowsForCollection(collection) {
   if (collection === 'settings') return [{ record_id: 'platform', owner_id: null, payload: S.settings }];
   if (collection === 'departments') return S.depts.map((name) => ({ record_id: name, owner_id: null, payload: { name } }));
+  const scoped = (item) => ({
+    organization_id: item._organizationId ?? O.context.organizationId,
+    unit_id: item._unitId ?? O.context.unitId,
+    sector_id: item._sectorId ?? O.context.sectorId
+  });
   if (collection === 'watch' || collection === 'notes') {
     return Object.entries(S[collection]).map(([key, value]) => {
       const internalId = Number(key.split(':')[0]);
       const owner_id = ownerAuthId(internalId);
-      return owner_id ? { record_id: key, owner_id, payload: { userId: internalId, value } } : null;
+      return owner_id ? { ...scoped({}), record_id: key, owner_id, payload: { userId: internalId, value } } : null;
     }).filter(Boolean);
   }
   return (S[collection] || []).map((item, index) => {
-    if (sharedCollections.includes(collection)) return { record_id: recordId(collection, item, index), owner_id: null, payload: item };
+    const payload = Object.fromEntries(Object.entries(item).filter(([key]) => !key.startsWith('_')));
+    if (sharedCollections.includes(collection)) return { ...scoped(item), record_id: recordId(collection, item, index), owner_id: null, payload };
     const owner_id = ownerAuthId(item.userId);
     if (!isStaff() && owner_id !== sessionAuthId) return null;
-    return owner_id ? { record_id: recordId(collection, item, index), owner_id, payload: item } : null;
+    return owner_id ? { ...scoped(item), record_id: recordId(collection, item, index), owner_id, payload } : null;
   }).filter(Boolean);
 }
 
 function hydrateRecords(records) {
   const mapped = Object.fromEntries(records.map((r) => [r.collection, r.payload]));
-  for (const collection of simpleCollections) S[collection] = records.filter((r) => r.collection === collection).map((r) => r.payload);
+  for (const collection of simpleCollections) S[collection] = records.filter((r) => r.collection === collection).map((r) => ({
+    ...r.payload,
+    _organizationId: r.organization_id,
+    _unitId: r.unit_id,
+    _sectorId: r.sector_id
+  }));
   if (mapped.settings) S.settings = { ...S.settings, ...mapped.settings };
   const departments = records.filter((r) => r.collection === 'departments').map((r) => r.payload.name);
   if (departments.length) S.depts = departments;
@@ -207,24 +292,29 @@ async function loadRemoteState(authUser) {
   sessionId = Number(own.internal_id);
   profileSnapshots.clear();
   S = DEFAULTS();
+  await loadPublicConfig();
+  await loadOrganizationalState(own.role === 'admin');
   const { data: directory, error: directoryError } = await backend.from('member_directory').select('*');
   if (directoryError) throw directoryError;
   S.users = (directory || []).map(profileFromRow);
   const ownProfile = profileFromRow(own);
   const ownIndex = S.users.findIndex((x) => x.id === ownProfile.id);
   if (ownIndex < 0) S.users.push(ownProfile); else S.users[ownIndex] = ownProfile;
-  if (['admin', 'instrutor'].includes(own.role)) {
+  if (own.role === 'admin') {
     const { data: profiles, error: profilesError } = await backend.from('profiles').select('*');
     if (profilesError) throw profilesError;
     S.users = (profiles || []).map(profileFromRow);
   }
   S.users.forEach((profile) => profileSnapshots.set(profile.authId, profileSnapshot(profile)));
-  const { data: records, error: recordsError } = await backend.from('app_records').select('id,collection,record_id,owner_id,payload').range(0, 9999);
+  let recordsQuery = backend.from('app_records')
+    .select('id,collection,record_id,owner_id,payload,organization_id,unit_id,sector_id,created_by,status');
+  recordsQuery = applyRecordScope(recordsQuery);
+  const { data: records, error: recordsError } = await recordsQuery.range(0, 9999);
   if (recordsError) throw recordsError;
   remoteRecordSnapshots.clear();
   (records || []).forEach((row) => remoteRecordSnapshots.set(remoteRecordKey(row.collection, row.owner_id, row.record_id), { ...row, snapshot: stableJSON(row.payload) }));
   hydrateRecords(records || []);
-  if (!['admin', 'instrutor'].includes(own.role)) await loadQuizOverview();
+  if (!isStaff()) await loadQuizOverview();
   remoteReady = true;
   return true;
 }
@@ -232,8 +322,12 @@ async function loadRemoteState(authUser) {
 async function loadPublicConfig() {
   S = DEFAULTS();
   const { data, error } = await backend.from('app_records').select('collection,payload')
-    .is('owner_id', null).in('collection', ['settings', 'departments']).range(0, 1000);
+    .is('owner_id', null).is('organization_id', null)
+    .in('collection', ['settings', 'departments']).range(0, 1000);
   if (error?.code === 'PGRST205') throw new Error('Banco ainda não configurado. Execute supabase/schema.sql no SQL Editor do projeto e recarregue esta página.');
+  if (error?.code === '42703' || error?.code === 'PGRST204') {
+    throw new Error('O banco ainda não possui a estrutura organizacional. Execute as migrações indicadas no README antes de publicar esta versão.');
+  }
   if (error) throw error;
   const settings = (data || []).find((row) => row.collection === 'settings')?.payload;
   if (settings) S.settings = { ...S.settings, ...settings };
@@ -248,7 +342,7 @@ async function syncCollection(collection) {
   const changed = rows.filter((row) => remoteRecordSnapshots.get(remoteRecordKey(collection, row.owner_id, row.record_id))?.snapshot !== stableJSON(row.payload));
   if (changed.length) {
     const { data, error } = await backend.from('app_records').upsert(changed, { onConflict: 'collection,record_id,owner_scope' })
-      .select('id,collection,record_id,owner_id,payload');
+      .select('id,collection,record_id,owner_id,payload,organization_id,unit_id,sector_id,created_by,status');
     if (error) throw error;
     (data || []).forEach((row) => remoteRecordSnapshots.set(remoteRecordKey(row.collection, row.owner_id, row.record_id), { ...row, snapshot: stableJSON(row.payload) }));
   }
@@ -264,13 +358,12 @@ async function syncCollection(collection) {
 
 async function refreshAnnouncements() {
   if (!remoteReady || LOCAL_MODE) return;
-  const { data, error } = await backend.from('app_records')
-    .select('id,collection,record_id,owner_id,payload')
-    .eq('collection', 'announcements')
-    .is('owner_id', null)
-    .range(0, 9999);
-  if (error) throw error;
-  const rows = data || [];
+  const scopedQuery = applyRecordScope(backend.from('app_records')
+    .select('id,collection,record_id,owner_id,payload,organization_id,unit_id,sector_id,created_by,status')
+    .eq('collection', 'announcements').is('owner_id', null));
+  const { data: scopedRows, error: scopedError } = await scopedQuery.range(0, 9999);
+  if (scopedError) throw scopedError;
+  const rows = scopedRows || [];
   const currentKeys = new Set(rows.map((row) => remoteRecordKey(row.collection, row.owner_id, row.record_id)));
   [...remoteRecordSnapshots.entries()].forEach(([key, row]) => {
     if (row.collection === 'announcements' && !currentKeys.has(key)) remoteRecordSnapshots.delete(key);
@@ -279,20 +372,22 @@ async function refreshAnnouncements() {
     remoteRecordKey(row.collection, row.owner_id, row.record_id),
     { ...row, snapshot: stableJSON(row.payload) }
   ));
-  S.announcements = rows.map((row) => row.payload);
+  S.announcements = rows.map((row) => ({
+    ...row.payload, _organizationId: row.organization_id, _unitId: row.unit_id, _sectorId: row.sector_id
+  }));
 }
 
 async function syncRemoteState() {
   if (!remoteReady || !sessionAuthId) return;
   await syncProfiles();
-  if (isStaff()) {
-    for (const collection of ['settings', 'departments', ...sharedCollections]) await syncCollection(collection);
+  if (isAdmin()) {
+    for (const collection of ['settings', 'departments']) await syncCollection(collection);
   }
-  for (const collection of (isStaff() ? privateCollections : studentWritableCollections)) await syncCollection(collection);
+  for (const collection of (isStaff() ? sharedCollections.concat(privateCollections) : studentWritableCollections)) await syncCollection(collection);
 }
 
 async function syncProfiles() {
-  const staff = isStaff();
+  const staff = isAdmin();
   for (const profile of S.users) {
     if (!profile.authId) continue;
     if (!staff && profile.authId !== sessionAuthId) continue;
